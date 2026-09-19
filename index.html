@@ -1,90 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manage Walks</title>
-  <style>
-    body { font-family: sans-serif; margin: 20px; }
-    form { max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-    button { padding: 8px; cursor: pointer; }
-    .btn-delete { background-color: #ff4d4d; color: white; border: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walks Tracker - Firebase Realtime CRUD</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        h2 { color: #2c3e50; }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-add { background-color: #2ecc71; color: white; }
+        .btn-update { background-color: #3498db; color: white; display: none; }
+        .btn-cancel { background-color: #95a5a6; color: white; display: none; }
+        .btn-walk-no {
+            background-color: #e67e22;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+        .btn-walk-no:hover { background-color: #d35400; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th { background-color: #34495e; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
 </head>
 <body>
 
-  <h1>Manage Walks</h1>
-  
-  <form id="walkForm">
-    <label for="walkNum">Walk Number (ID):</label>
-    <input type="number" id="walkNum" required>
+<div class="container">
+    <h2>Track Your Walks</h2>
+    
+    <!-- Form Box -->
+    <div id="walkForm">
+        <input type="hidden" id="walkKey">
+        <div class="form-group">
+            <label for="walkNumber">Walk Number / ID:</label>
+            <input type="text" id="walkNumber" placeholder="e.g., Walk 101">
+        </div>
+        <div class="form-group">
+            <label for="walkLocation">Location:</label>
+            <input type="text" id="walkLocation" placeholder="e.g., Central Park">
+        </div>
+        <div class="form-group">
+            <label for="walkDistance">Distance (km):</label>
+            <input type="number" step="0.1" id="walkDistance" placeholder="e.g., 5.4">
+        </div>
+        <button id="addBtn" class="btn-add" onclick="saveWalk()">Add Walk</button>
+        <button id="updateBtn" class="btn-update" onclick="updateWalkData()">Update Walk</button>
+        <button id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel</button>
+    </div>
 
-    <label for="walkName">Walk Name:</label>
-    <input type="text" id="walkName" required>
+    <!-- Data Table -->
+    <table id="walksTable">
+        <thead>
+            <tr>
+                <th>Action Button</th>
+                <th>Location</th>
+                <th>Distance (km)</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Dynamic rows will be inserted here -->
+        </tbody>
+    </table>
+</div>
 
-    <label for="walkDesc">Walk Description:</label>
-    <textarea id="walkDesc" rows="4" required></textarea>
+<!-- Firebase App and Realtime Database SDKs -->
+<script type="module">
+    import { initializeApp } from "https://gstatic.com";
+    import { getDatabase, ref, push, set, onValue, update, remove } from "https://gstatic.com";
 
-    <button type="button" id="btnSave">Save (Create / Update)</button>
-    <button type="button" id="btnDelete" class="btn-delete">Delete Walk</button>
-  </form>
+    // TODO: Replace with your actual Firebase project configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
+  authDomain: "programme-planning.firebaseapp.com",
+  databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "programme-planning",
+  storageBucket: "programme-planning.firebasestorage.app",
+  messagingSenderId: "1028011310189",
+  appId: "1:1028011310189:web:8ac4f37a8d248899735364",
+  measurementId: "G-BBQ4Q6TQHD"
+};
 
-  <!-- Import Firebase SDK modules -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-    // Your Firebase configuration using your project's credentials
-    const firebaseConfig = {
-      projectId: "programme-planning",
-      databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
-      apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ" // Retrieve this from your Firebase Project Settings
-    };
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const dbRef = ref(db, 'walks');
 
-    const walkNumInput = document.getElementById("walkNum");
-    const walkNameInput = document.getElementById("walkName");
-    const walkDescInput = document.getElementById("walkDesc");
+    // DOM Elements
+    const walkKeyInput = document.getElementById('walkKey');
+    const walkNumberInput = document.getElementById('walkNumber');
+    const walkLocationInput = document.getElementById('walkLocation');
+    const walkDistanceInput = document.getElementById('walkDistance');
+    
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const tableBody = document.getElementById('tableBody');
 
-    // CREATE or UPDATE
-    document.getElementById("btnSave").addEventListener("click", () => {
-      const walkNum = walkNumInput.value;
-      const walkName = walkNameInput.value;
-      const walkDesc = walkDescInput.value;
-
-      if (!walkNum || !walkName || !walkDesc) {
-        return alert("Please fill out all fields.");
-      }
-
-      // Write data to walks/{walkNum}
-      set(ref(db, 'walks/' + walkNum), {
-        walkNum: Number(walkNum),
-        walkName: walkName,
-        walkDesc: walkDesc
-      })
-      .then(() => alert("Walk saved successfully!"))
-      .catch((err) => alert("Error saving walk: " + err.message));
+    // --- READ: Listen for real-time changes ---
+    onValue(dbRef, (snapshot) => {
+        tableBody.innerHTML = ""; // Clear existing rows
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Iterate over all entries in the walks node
+            Object.keys(data).forEach((key) => {
+                const walk = data[key];
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <button class="btn-walk-no" onclick="handleWalkAction('${key}', '${walk.number}', '${walk.location}', '${walk.distance}')">
+                            ${walk.number}
+                        </button>
+                    </td>
+                    <td>${walk.location}</td>
+                    <td>${walk.distance} km</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        } else {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No walks recorded yet.</td></tr>`;
+        }
     });
 
-    // DELETE
-    document.getElementById("btnDelete").addEventListener("click", () => {
-      const walkNum = walkNumInput.value;
+    // --- CREATE: Add a new walk ---
+    window.saveWalk = function() {
+        const number = walkNumberInput.value.trim();
+        const location = walkLocationInput.value.trim();
+        const distance = walkDistanceInput.value.trim();
 
-      if (!walkNum) {
-        return alert("Walk Number is required to delete.");
-      }
+        if(!number || !location || !distance) {
+            alert("Please fill out all fields.");
+            return;
+        }
 
-      // Remove data from walks/{walkNum}
-      remove(ref(db, 'walks/' + walkNum))
-      .then(() => {
-        alert("Walk deleted successfully!");
-        document.getElementById("walkForm").reset();
-      })
-      .catch((err) => alert("Error deleting walk: " + err.message));
-    });
-  </script>
+        // Push creates a brand new unique entry key
+        const newWalkRef = push(dbRef);
+        set(newWalkRef, {
+            number: number,
+            location: location,
+            distance: parseFloat(distance)
+        }).then(() => {
+            resetForm();
+        }).catch((error) => alert("Error saving data: " + error.message));
+    }
+
+    // --- BUTTON CLICK CONTEXT CONTROLLER ---
+    // Triggered explicitly when clicking the walk number button in the table row
+    window.handleWalkAction = function(key, number, location, distance) {
+        const action = prompt(`You clicked [${number}]. \nType 'edit' to update details or 'delete' to remove this record:`).trim().toLowerCase();
+        
+        if (action === 'edit') {
+            populateFormForEdit(key, number, location, distance);
+        } else if (action === 'delete') {
+            if (confirm(`Are you sure you want to permanently delete ${number}?`)) {
+                deleteWalk(key);
+            }
+        } else if (action !== "") {
+            alert("Action cancelled or invalid command typed.");
+        }
+    }
+
+    // --- UPDATE preparation ---
+    function populateFormForEdit(key, number, location, distance) {
+        walkKeyInput.value = key;
+        walkNumberInput.value = number;
+        walkLocationInput.value = location;
+        walkDistanceInput.value = distance;
+
+        // Toggle UI buttons
+        addBtn.style.display = "none";
+        updateBtn.style.display = "inline-block";
+        cancelBtn.style.display = "inline-block";
+        walkNumberInput.focus();
+    }
+
+    // --- UPDATE execute ---
+    window.updateWalkData = function() {
+        const key = walkKeyInput.value;
+        const updatedData = {
+            number: walkNumberInput.value.trim(),
+            location: walkLocationInput.value.trim(),
+            distance: parseFloat(walkDistanceInput.value.trim())
+        };
+
+        const specificWalkRef = ref(db, `walks/${key}`);
+        update(specificWalkRef, updatedData)
+            .then(() => {
+                resetForm();
+            })
+            .catch((error) => alert("Error updating record: " + error.message));
+    }
+
+    // --- DELETE execute ---
+    function deleteWalk(key) {
+        const specificWalkRef = ref(db, `walks/${key}`);
+        remove(specificWalkRef)
+            .then(() => {
+                // If the app was currently editing the deleted record, clean up the form
+                if (walkKeyInput.value === key) resetForm();
+            })
+            .catch((error) => alert("Error deleting record: " + error.message));
+    }
+
+    // --- UI Helper ---
+    window.resetForm = function() {
+        walkKeyInput.value = "";
+        walkNumberInput.value = "";
+        walkLocationInput.value = "";
+        walkDistanceInput.value = "";
+
+        addBtn.style.display = "inline-block";
+        updateBtn.style.display = "none";
+        cancelBtn.style.display = "none";
+    }
+</script>
 </body>
 </html>
