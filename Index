@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Walks</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    form { max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+    button { padding: 8px; cursor: pointer; }
+    .btn-delete { background-color: #ff4d4d; color: white; border: none; }
+  </style>
+</head>
+<body>
+
+  <h1>Manage Walks</h1>
+  
+  <form id="walkForm">
+    <label for="walkNum">Walk Number (ID):</label>
+    <input type="number" id="walkNum" required>
+
+    <label for="walkName">Walk Name:</label>
+    <input type="text" id="walkName" required>
+
+    <label for="walkDesc">Walk Description:</label>
+    <textarea id="walkDesc" rows="4" required></textarea>
+
+    <button type="button" id="btnSave">Save (Create / Update)</button>
+    <button type="button" id="btnDelete" class="btn-delete">Delete Walk</button>
+  </form>
+
+  <!-- Import Firebase SDK modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // Your Firebase configuration using your project's credentials
+    const firebaseConfig = {
+      projectId: "programme-planning",
+      databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
+      apiKey: "YOUR_WEB_API_KEY" // Retrieve this from your Firebase Project Settings
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const walkNumInput = document.getElementById("walkNum");
+    const walkNameInput = document.getElementById("walkName");
+    const walkDescInput = document.getElementById("walkDesc");
+
+    // CREATE or UPDATE
+    document.getElementById("btnSave").addEventListener("click", () => {
+      const walkNum = walkNumInput.value;
+      const walkName = walkNameInput.value;
+      const walkDesc = walkDescInput.value;
+
+      if (!walkNum || !walkName || !walkDesc) {
+        return alert("Please fill out all fields.");
+      }
+
+      // Write data to walks/{walkNum}
+      set(ref(db, 'walks/' + walkNum), {
+        walkNum: Number(walkNum),
+        walkName: walkName,
+        walkDesc: walkDesc
+      })
+      .then(() => alert("Walk saved successfully!"))
+      .catch((err) => alert("Error saving walk: " + err.message));
+    });
+
+    // DELETE
+    document.getElementById("btnDelete").addEventListener("click", () => {
+      const walkNum = walkNumInput.value;
+
+      if (!walkNum) {
+        return alert("Walk Number is required to delete.");
+      }
+
+      // Remove data from walks/{walkNum}
+      remove(ref(db, 'walks/' + walkNum))
+      .then(() => {
+        alert("Walk deleted successfully!");
+        document.getElementById("walkForm").reset();
+      })
+      .catch((err) => alert("Error deleting walk: " + err.message));
+    });
+  </script>
+</body>
+</html>
