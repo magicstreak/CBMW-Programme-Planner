@@ -38,7 +38,7 @@
     const firebaseConfig = {
       projectId: "programme-planning",
       databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
-      apiKey: "YOUR_WEB_API_KEY" // Retrieve this from your Firebase Project Settings
+      apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ" // Retrieve this from your Firebase Project Settings
     };
 
     // Initialize Firebase
