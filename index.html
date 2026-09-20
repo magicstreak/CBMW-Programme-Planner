@@ -193,8 +193,8 @@
                 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="routeNum">Route Number</label>
-                        <input type="text" id="routeNum" required placeholder="e.g. R-01">
+                        <label for="walkID">Route Number</label>
+                        <input type="text" id="WalkID" required placeholder="e.g. R-01">
                     </div>
                     <div class="form-group">
                         <label for="routeName">Route Name</label>
@@ -282,7 +282,7 @@
         const modalTitle = document.getElementById('modalTitle');
         const routeIdInput = document.getElementById('routeId');
         
-        const fields = ['routeNum', 'routeName', 'routeDesc', 'routeGrade', 'routeDistance', 'routeAscent', 'routeTerrain', 'routeScr', 'routeTime', 'routeDirections', 'routeOwner'];
+        const fields = ['walkID', 'routeName', 'routeDesc', 'routeGrade', 'routeDistance', 'routeAscent', 'routeTerrain', 'routeScr', 'routeTime', 'routeDirections', 'routeOwner'];
         const elements = {};
         fields.forEach(f => elements[f] = document.getElementById(f));
 
@@ -311,7 +311,7 @@
                     },
                     create: (data) => {
                        // const id = 'route_' + Date.now();
-                        const id = data.routeNum.trim();
+                        const id = data.walkID.trim();
                         if (!id) return Promise.reject("Route Number is required.");
 
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
@@ -325,12 +325,12 @@
                     update: (id, data) => {
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
                         
-                        // If user changes routeNum during an edit, remove the old key entity
-                        if (id !== data.routeNum.trim()) {
+                        // If user changes walkID during an edit, remove the old key entity
+                        if (id !== data.walkID.trim()) {
                             delete currentData[id];
                         }
                         
-                        const newId = data.routeNum.trim();
+                        const newId = data.walkID.trim();
                         currentData[newId] = data;
                         localStorage.setItem('walks', JSON.stringify(currentData));
                         dbService.refresh();
@@ -372,10 +372,10 @@
                             });
                         },
                         create: async (data) => {
-                            const id = data.routeNum.trim();
+                            const id = data.walkID.trim();
                             if (!id) throw new Error("Route Number is required.");
                             
-                            // Check if routeNum already exists before writing
+                            // Check if walkID already exists before writing
                             const snapshot = await get(ref(db, `walks/${id}`));
                             if (snapshot.exists()) {
                                 throw new Error(`Route ${id} already exists.`);
@@ -384,9 +384,9 @@
                             return set(ref(db, `walks/${id}`), data);
                         },
                         update: async (id, data) => {
-                            const newId = data.routeNum.trim();
+                            const newId = data.walkID.trim();
                             if (id !== newId) {
-                                // If primary key routeNum changed, delete the old node and set the new one
+                                // If primary key walkID changed, delete the old node and set the new one
                                 await remove(ref(db, `walks/${id}`));
                                 return set(ref(db, `walks/${newId}`), data);
                             }
@@ -415,7 +415,7 @@
                 const tr = document.createElement('tr');
                 
                 tr.innerHTML = `
-                    <td><strong>${escapeHtml(route.routeNum || '')}</strong></td>
+                    <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
                     <td>${escapeHtml(route.routeName || '')}</td>
                     <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.routeGrade || 'E')}</span></td>
                     <td>${escapeHtml(route.routeDistance || '')}</td>
