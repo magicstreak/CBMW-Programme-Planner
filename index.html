@@ -476,6 +476,8 @@
                         console.log(routeIdInput.value);
                         console.log(fields).
                         fields.forEach(f => {
+                             console.log("elements " );
+                             console.log(elements);
                             elements[f].value = route[f] || '';
                         });
                         modalTitle.textContent = `Edit Profile: ${route.routeName}`;
