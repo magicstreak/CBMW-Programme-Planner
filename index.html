@@ -164,7 +164,7 @@
         <table id="routesTable">
             <thead>
                 <tr>
-                    <th># Num</th>
+                    <th>Walk Number</th>
                     <th>Route Name</th>
                     <th>Grade</th>
                     <th>Distance</th>
@@ -415,17 +415,17 @@
                 const tr = document.createElement('tr');
                 
                 tr.innerHTML = `
-                    <td><strong>${escapeHtml(route.routeNum || '')}</strong></td>
-                    <td>${escapeHtml(route.routeName || '')}</td>
+                    <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
+                    <td>${escapeHtml(route.Route_Name || '')}</td>
                     <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.routeGrade || 'E')}</span></td>
-                    <td>${escapeHtml(route.routeDistance || '')}</td>
-                    <td>${escapeHtml(route.routeAscent || '-')}</td>
+                    <td>${escapeHtml(route.Distance || '')}</td>
+                    <td>${escapeHtml(route.Ascent || '-')}</td>
                     <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.routeTerrain || 'A')}</span></td>
-                    <td>${escapeHtml(route.routeScr || '0')}</td>
-                    <td>${escapeHtml(route.routeTime || '')}</td>
-                    <td>${escapeHtml(route.routeOwner || '')}</td>
-                    <td title="${escapeHtml(route.routeDesc || '')}">${truncateText(route.routeDesc || '-', 20)}</td>
-                    <td title="${escapeHtml(route.routeDirections || '')}">${truncateText(route.routeDirections || '-', 20)}</td>
+                    <td>${escapeHtml(route.Scr || '0')}</td>
+                    <td>${escapeHtml(route.Total_Time || '')}</td>
+                    <td>${escapeHtml(route.Leader || '')}</td>
+                    <td title="${escapeHtml(route.Route_Description || '')}">${truncateText(route.routeDesc || '-', 20)}</td>
+                    <td title="${escapeHtml(route.Directions || '')}">${truncateText(route.routeDirections || '-', 20)}</td>
                     <td class="actions-cell">
                         <button class="btn edit-btn" data-id="${key}">Edit</button>
                         <button class="btn btn-danger delete-btn" data-id="${key}">Delete</button>
