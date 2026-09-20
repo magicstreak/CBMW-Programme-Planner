@@ -311,7 +311,7 @@
                     },
                     create: (data) => {
                        // const id = 'route_' + Date.now();
-                        const id = data.routeNum.trim();
+                        const id = 'walk'+data.walkID.trim();
                         if (!id) return Promise.reject("Route Number is required.");
 
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
@@ -326,11 +326,11 @@
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
                         
                         // If user changes routeNum during an edit, remove the old key entity
-                        if (id !== data.routeNum.trim()) {
+                        if (id !== 'walk_'+data.walkID.trim()) {
                             delete currentData[id];
                         }
                         
-                        const newId = data.routeNum.trim();
+                        const newId = 'walk_'+data.walkID.trim();
                         currentData[newId] = data;
                         localStorage.setItem('walks', JSON.stringify(currentData));
                         dbService.refresh();
@@ -372,7 +372,7 @@
                             });
                         },
                         create: async (data) => {
-                            const id = data.routeNum.trim();
+                            const id = 'walk_'+data.routeNum.trim();
                             if (!id) throw new Error("Route Number is required.");
                             
                             // Check if routeNum already exists before writing
