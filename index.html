@@ -265,16 +265,16 @@
 
     <script type="module">
         // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
-  authDomain: "programme-planning.firebaseapp.com",
-  databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "programme-planning",
-  storageBucket: "programme-planning.firebasestorage.app",
-  messagingSenderId: "1028011310189",
-  appId: "1:1028011310189:web:8ac4f37a8d248899735364",
-  measurementId: "G-BBQ4Q6TQHD"
-};
+        const firebaseConfig = {
+        apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
+        authDomain: "programme-planning.firebaseapp.com",
+        databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "programme-planning",
+        storageBucket: "programme-planning.firebasestorage.app",
+        messagingSenderId: "1028011310189",
+        appId: "1:1028011310189:web:8ac4f37a8d248899735364",
+        measurementId: "G-BBQ4Q6TQHD"
+        };
 
         const storageStatus = document.getElementById('storageStatus');
         const routeModal = document.getElementById('routeModal');
@@ -310,16 +310,28 @@ const firebaseConfig = {
                         window.addEventListener('storage', loadData);
                     },
                     create: (data) => {
-                        const id = 'route_' + Date.now();
+                       // const id = 'route_' + Date.now();
+                        const id = data.routeNum.trim();
+                        if (!id) return Promise.reject("Route Number is required.");
+
                         const currentData = JSON.parse(localStorage.getItem('expanded_routes')) || {};
+                        if (currentData[id]) return Promise.reject(`Route ${id} already exists.`);
+
                         currentData[id] = data;
                         localStorage.setItem('expanded_routes', JSON.stringify(currentData));
                         dbService.refresh();
-                        return Promise.resolve();
+                        return Promise.resolve();                        
                     },
                     update: (id, data) => {
                         const currentData = JSON.parse(localStorage.getItem('expanded_routes')) || {};
-                        currentData[id] = data;
+                        
+                        // If user changes routeNum during an edit, remove the old key entity
+                        if (id !== data.routeNum.trim()) {
+                            delete currentData[id];
+                        }
+                        
+                        const newId = data.routeNum.trim();
+                        currentData[newId] = data;
                         localStorage.setItem('expanded_routes', JSON.stringify(currentData));
                         dbService.refresh();
                         return Promise.resolve();
@@ -345,7 +357,7 @@ const firebaseConfig = {
 
                 try {
                     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
-                    const { getDatabase, ref, push, onValue, update, remove } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
+                    const { getDatabase, ref, set, onValue, update, remove, get } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
 
                     const app = initializeApp(firebaseConfig);
                     const db = getDatabase(app);
@@ -359,8 +371,27 @@ const firebaseConfig = {
                                 callback(data);
                             });
                         },
-                        create: (data) => push(routesRef, data),
-                        update: (id, data) => update(ref(db, `expanded_routes/${id}`), data),
+                        create: async (data) => {
+                            const id = data.routeNum.trim();
+                            if (!id) throw new Error("Route Number is required.");
+                            
+                            // Check if routeNum already exists before writing
+                            const snapshot = await get(ref(db, `expanded_routes/${id}`));
+                            if (snapshot.exists()) {
+                                throw new Error(`Route ${id} already exists.`);
+                            }
+                            
+                            return set(ref(db, `expanded_routes/${id}`), data);
+                        },
+                        update: async (id, data) => {
+                            const newId = data.routeNum.trim();
+                            if (id !== newId) {
+                                // If primary key routeNum changed, delete the old node and set the new one
+                                await remove(ref(db, `expanded_routes/${id}`));
+                                return set(ref(db, `expanded_routes/${newId}`), data);
+                            }
+                            return update(ref(db, `expanded_routes/${id}`), data);
+                        },
                         delete: (id) => remove(ref(db, `expanded_routes/${id}`))
                     };
                     dbService.init(renderTable);
