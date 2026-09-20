@@ -368,6 +368,7 @@
                             onValue(routesRef, (snapshot) => {
                                 const data = snapshot.val() || {};
                                 localRoutesData = data;
+                                console.log(localRoutesData[0]); 
                                 callback(data);
                             });
                         },
