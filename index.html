@@ -405,66 +405,46 @@
             }
         }
 
-        function renderTable(data) {
-            routesTableBody.innerHTML = '';
-            
-            if (Object.keys(data).length === 0) {
-                routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes found. Click 'Add New Route' to start testing.</td></tr>`;
-                return;
-            }
+function renderTable(data) {
+    routesTableBody.innerHTML = '';
+    
+    if (Object.keys(data).length === 0) {
+        routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes found. Click 'Add New Route' to start testing.</td></tr>`;
+        return;
+    }
 
-            Object.keys(data).forEach((key) => {
-                const route = data[key];
-                const tr = document.createElement('tr');
-                
-                tr.innerHTML = `
-                    <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
-                    <td>${escapeHtml(route.Route_Name || '')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.Grade || 'E')}</span></td>
-                    <td>${escapeHtml(route.Distance || '')}</td>
-                    <td>${escapeHtml(route.Ascent || '-')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.Terrain || 'A')}</span></td>
-                    <td>${escapeHtml(route.Scr || '0')}</td>
-                    <td>${escapeHtml(route.Total_Time || '')}</td>
-                    <td>${escapeHtml(route.Leader || '')}</td>
-                    <td title="${escapeHtml(route.Route_Description || '')}">${truncateText(route.Route_Description || '-', 20)}</td>
-                    <td title="${escapeHtml(route.Directions || '')}">${truncateText(route.Directions || '-', 20)}</td>
-                    <td class="actions-cell">
-                        <button class="btn edit-btn" data-id="${key}">Edit</button>
-                        <button class="btn btn-danger delete-btn" data-id="${key}">Delete</button>
-                    </td>
-                `;
-                routesTableBody.appendChild(tr);
-            });
+    Object.keys(data).forEach((key) => {
+        const route = data[key];
+        const tr = document.createElement('tr');
+        
+        // 1. FIXED property paths (.Grade and .Terrain)
+        // 2. Added a button element that passes the exact database dictionary 'key'
+        tr.innerHTML = `
+            <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
+            <td>${escapeHtml(route.Route_Name || '')}</td>
+            <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.Grade || 'E')}</span></td>
+            <td>${escapeHtml(route.Distance || '')}</td>
+            <td>${escapeHtml(route.Ascent || '-')}</td>
+            <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.Terrain || 'A')}</span></td>
+            <td>${escapeHtml(route.Scr || '')}</td>
+            <td>${escapeHtml(route.Total_Time || '')}</td>
+            <td>${escapeHtml(route.Leader || '')}</td>
+            <td>
+                <button class="edit-route-btn" data-id="${escapeHtml(key)}">Edit</button>
+            </td>
+        `;
+        routesTableBody.appendChild(tr);
+    });
 
-            attachRowEventListeners();
-        }
-
-        addRouteBtn.addEventListener('click', () => {
-            routeForm.reset();
-            routeIdInput.value = '';
-            modalTitle.textContent = 'Create New Walking Profile';
-            routeModal.style.display = 'flex';
+    // 3. FIXED: Bind click events immediately after elements are rendered to the DOM
+    document.querySelectorAll('.edit-route-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const routeId = e.target.getAttribute('data-id');
+            openEditModal(routeId); 
         });
-
-        cancelBtn.addEventListener('click', () => {
-            routeModal.style.display = 'none';
-        });
-
-        routeForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const id = routeIdInput.value;
-            const routeData = {};
-            fields.forEach(f => {
-                routeData[f] = elements[f].value;
-            });
-
-            const action = id ? dbService.update(id, routeData) : dbService.create(routeData);
-            
-            action
-                .then(() => routeModal.style.display = 'none')
-                .catch((err) => console.error("Database operation failed:", err));
-        });
+    });
+}
+        
 
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
