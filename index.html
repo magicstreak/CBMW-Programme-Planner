@@ -282,7 +282,7 @@
         const modalTitle = document.getElementById('modalTitle');
         const routeIdInput = document.getElementById('routeId');
         
-        const fields = ['routeNum', 'routeName', 'routeDesc', 'routeGrade', 'routeDistance', 'routeAscent', 'routeTerrain', 'routeScr', 'routeTime', 'routeDirections', 'routeOwner'];
+        const fields = ['walkID', 'Route_Name', 'Route_Description', 'Grade', 'Distance', 'Ascent', 'Terrain', 'Scr', 'Total_Time', 'Directions', 'Leader'];
         const elements = {};
         fields.forEach(f => elements[f] = document.getElementById(f));
 
@@ -384,7 +384,7 @@
                             return set(ref(db, `walks/${id}`), data);
                         },
                         update: async (id, data) => {
-                            const newId = data.routeNum.trim();
+                            const newId = `walk_`+data.walkID.trim();
                             if (id !== newId) {
                                 // If primary key routeNum changed, delete the old node and set the new one
                                 await remove(ref(db, `walks/${id}`));
@@ -474,7 +474,7 @@
                         fields.forEach(f => {
                             elements[f].value = route[f] || '';
                         });
-                        modalTitle.textContent = `Edit Profile: ${route.routeName}`;
+                        modalTitle.textContent = `Edit Profile: ${route.Route_Name}`;
                         routeModal.style.display = 'flex';
                     }
                 });
