@@ -468,7 +468,7 @@
                 button.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
                     const route = localRoutesData[id];
-
+console.table(localRoutesData);
                     if (route) {
                         routeIdInput.value = id;
                         fields.forEach(f => {
