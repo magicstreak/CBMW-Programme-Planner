@@ -466,7 +466,7 @@
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    console.log(localRoutesData[]); 
+                    console.log(localRoutesData); 
                     const id = e.target.getAttribute('data-id');
                      console.log(id); 
                     const route = localRoutesData[id];
