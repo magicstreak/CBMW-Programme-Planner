@@ -368,7 +368,6 @@
                             onValue(routesRef, (snapshot) => {
                                 const data = snapshot.val() || {};
                                 localRoutesData = data;
-                                console.log(localRoutesData[0]); 
                                 callback(data);
                             });
                         },
@@ -467,11 +466,15 @@
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
+                    console.log(localRoutesData[]); 
                     const id = e.target.getAttribute('data-id');
+                     console.log(id); 
                     const route = localRoutesData[id];
-console.table(localRoutesData);
+                     console.log(route);
                     if (route) {
                         routeIdInput.value = id;
+                        console.log(routeIdInput.value);
+                        console.log(fields).
                         fields.forEach(f => {
                             elements[f].value = route[f] || '';
                         });
