@@ -164,7 +164,7 @@
         <table id="routesTable">
             <thead>
                 <tr>
-                    <th># Num</th>
+                    <th>Walk Number</th>
                     <th>Route Name</th>
                     <th>Grade</th>
                     <th>Distance</th>
@@ -193,16 +193,16 @@
                 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="routeNum">Route Number</label>
-                        <input type="text" id="routeNum" required placeholder="e.g. R-01">
+                        <label for="walkID">Route Number</label>
+                        <input type="text" id="walkID" required placeholder="e.g. R-01">
                     </div>
                     <div class="form-group">
-                        <label for="routeName">Route Name</label>
-                        <input type="text" id="routeName" required>
+                        <label for="Route_Name">Route Name</label>
+                        <input type="text" id="Route_Name" required>
                     </div>
                     <div class="form-group">
-                        <label for="routeGrade">Grade</label>
-                        <select id="routeGrade">
+                        <label for="Grade">Grade</label>
+                        <select id="Grade">
                             <option value="E">E</option>
                             <option value="M">M</option>
                             <option value="MS">MS</option>
@@ -211,16 +211,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="routeDistance">Distance</label>
-                        <input type="text" id="routeDistance" required placeholder="e.g. 5.4 km">
+                        <label for="Distance">Distance</label>
+                        <input type="text" id="Distance" required placeholder="e.g. 5.4 km">
                     </div>
                     <div class="form-group">
-                        <label for="routeAscent">Ascent</label>
-                        <input type="text" id="routeAscent" placeholder="e.g. 230m">
+                        <label for="Ascent">Ascent</label>
+                        <input type="text" id="Ascent" placeholder="e.g. 230m">
                     </div>
                     <div class="form-group">
-                        <label for="routeTerrain">Terrain</label>
-                        <select id="routeTerrain">
+                        <label for="Terrain">Terrain</label>
+                        <select id="Terrain">
                             <option value="A">A</option>
                             <option value="B">B</option>
                             <option value="C">C</option>
@@ -228,8 +228,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="routeScr">Scr (Score)</label>
-                        <select id="routeScr">
+                        <label for="Scr">Scr (Score)</label>
+                        <select id="Scr">
                             <option value="0">0</option>
                             <option value="1">1</option>
                             <option value="2">2</option>
@@ -238,20 +238,20 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="routeTime">Time (Duration)</label>
-                        <input type="text" id="routeTime" required placeholder="e.g. 2h 30m">
+                        <label for="Total_Time">Time (Duration)</label>
+                        <input type="text" id="Total_Time" required placeholder="e.g. 2h 30m">
                     </div>
                     <div class="form-group full-width">
-                        <label for="routeOwner">Owner</label>
-                        <input type="text" id="routeOwner" required placeholder="Author or organization name">
+                        <label for="Leader">Leader</label>
+                        <input type="text" id="Leader" required placeholder="Author or organization name">
                     </div>
                     <div class="form-group full-width">
-                        <label for="routeDesc">Route Description</label>
-                        <textarea id="routeDesc" placeholder="Brief summary of path features..."></textarea>
+                        <label for="Route_Description">Route Description</label>
+                        <textarea id="Route_Description" placeholder="Brief summary of path features..."></textarea>
                     </div>
                     <div class="form-group full-width">
-                        <label for="routeDirections">Directions</label>
-                        <textarea id="routeDirections" placeholder="Step-by-step path logs..."></textarea>
+                        <label for="Directions">Directions</label>
+                        <textarea id="Directions" placeholder="Step-by-step path logs..."></textarea>
                     </div>
                 </div>
 
@@ -282,7 +282,7 @@
         const modalTitle = document.getElementById('modalTitle');
         const routeIdInput = document.getElementById('routeId');
         
-        const fields = ['routeNum', 'routeName', 'routeDesc', 'routeGrade', 'routeDistance', 'routeAscent', 'routeTerrain', 'routeScr', 'routeTime', 'routeDirections', 'routeOwner'];
+        const fields = ['walkID', 'Route_Name', 'Route_Description', 'Grade', 'Distance', 'Ascent', 'Terrain', 'Scr', 'Total_Time', 'Directions', 'Leader'];
         const elements = {};
         fields.forEach(f => elements[f] = document.getElementById(f));
 
@@ -311,7 +311,7 @@
                     },
                     create: (data) => {
                        // const id = 'route_' + Date.now();
-                        const id = data.routeNum.trim();
+                        const id = data.walkID.trim();
                         if (!id) return Promise.reject("Route Number is required.");
 
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
@@ -325,12 +325,12 @@
                     update: (id, data) => {
                         const currentData = JSON.parse(localStorage.getItem('walks')) || {};
                         
-                        // If user changes routeNum during an edit, remove the old key entity
-                        if (id !== data.routeNum.trim()) {
+                        // If user changes walkID during an edit, remove the old key entity
+                        if (id !== data.walkID.trim()) {
                             delete currentData[id];
                         }
                         
-                        const newId = data.routeNum.trim();
+                        const newId = data.walkID.trim();
                         currentData[newId] = data;
                         localStorage.setItem('walks', JSON.stringify(currentData));
                         dbService.refresh();
@@ -372,10 +372,10 @@
                             });
                         },
                         create: async (data) => {
-                            const id = data.routeNum.trim();
+                            const id = 'walk_'+data.walkID.trim();
                             if (!id) throw new Error("Route Number is required.");
                             
-                            // Check if routeNum already exists before writing
+                            // Check if walkID already exists before writing
                             const snapshot = await get(ref(db, `walks/${id}`));
                             if (snapshot.exists()) {
                                 throw new Error(`Route ${id} already exists.`);
@@ -384,9 +384,9 @@
                             return set(ref(db, `walks/${id}`), data);
                         },
                         update: async (id, data) => {
-                            const newId = data.routeNum.trim();
+                            const newId = 'walks_'+data.walkID.trim();
                             if (id !== newId) {
-                                // If primary key routeNum changed, delete the old node and set the new one
+                                // If primary key walkID changed, delete the old node and set the new one
                                 await remove(ref(db, `walks/${id}`));
                                 return set(ref(db, `walks/${newId}`), data);
                             }
@@ -411,21 +411,22 @@
             }
 
             Object.keys(data).forEach((key) => {
+                
                 const route = data[key];
                 const tr = document.createElement('tr');
                 
                 tr.innerHTML = `
-                    <td><strong>${escapeHtml(route.routeNum || '')}</strong></td>
-                    <td>${escapeHtml(route.routeName || '')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.routeGrade || 'E')}</span></td>
-                    <td>${escapeHtml(route.routeDistance || '')}</td>
-                    <td>${escapeHtml(route.routeAscent || '-')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.routeTerrain || 'A')}</span></td>
-                    <td>${escapeHtml(route.routeScr || '0')}</td>
-                    <td>${escapeHtml(route.routeTime || '')}</td>
-                    <td>${escapeHtml(route.routeOwner || '')}</td>
-                    <td title="${escapeHtml(route.routeDesc || '')}">${truncateText(route.routeDesc || '-', 20)}</td>
-                    <td title="${escapeHtml(route.routeDirections || '')}">${truncateText(route.routeDirections || '-', 20)}</td>
+                    <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
+                    <td>${escapeHtml(route.Route_Name || '')}</td>
+                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.Grade || 'E')}</span></td>
+                    <td>${escapeHtml(route.Distance || '')}</td>
+                    <td>${escapeHtml(route.Ascent || '-')}</td>
+                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.Terrain || 'A')}</span></td>
+                    <td>${escapeHtml(route.Scr || '0')}</td>
+                    <td>${escapeHtml(route.Total_Time || '')}</td>
+                    <td>${escapeHtml(route.Leader || '')}</td>
+                    <td title="${escapeHtml(route.Route_Description || '')}">${truncateText(route.Route_Description || '-', 20)}</td>
+                    <td title="${escapeHtml(route.Directions || '')}">${truncateText(route.Directions || '-', 20)}</td>
                     <td class="actions-cell">
                         <button class="btn edit-btn" data-id="${key}">Edit</button>
                         <button class="btn btn-danger delete-btn" data-id="${key}">Delete</button>
@@ -466,12 +467,13 @@
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
+                    
                     const id = e.target.getAttribute('data-id');
                     const route = localRoutesData[id];
-
+                     
                     if (route) {
                         routeIdInput.value = id;
-                        fields.forEach(f => {
+                            fields.forEach(f => {
                             elements[f].value = route[f] || '';
                         });
                         modalTitle.textContent = `Edit Profile: ${route.routeName}`;
