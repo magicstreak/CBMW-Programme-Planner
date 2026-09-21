@@ -411,8 +411,7 @@
             }
 
             Object.keys(data).forEach((key) => {
-                console.log('keys '+key)
-                console.log('data '+data)
+                
                 const route = data[key];
                 const tr = document.createElement('tr');
                 
@@ -468,17 +467,13 @@
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    console.log(localRoutesData); 
+                    
                     const id = e.target.getAttribute('data-id');
-                     console.log(id); 
                     const route = localRoutesData[id];
-                     console.log(route);
+                     
                     if (route) {
                         routeIdInput.value = id;
-                        console.log(routeIdInput.value);
-                             fields.forEach(f => {
-                             console.log("elements " );
-                             console.log(elements);
+                            fields.forEach(f => {
                             elements[f].value = route[f] || '';
                         });
                         modalTitle.textContent = `Edit Profile: ${route.routeName}`;
