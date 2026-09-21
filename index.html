@@ -398,6 +398,7 @@
                 } catch (error) {
                     console.error("Firebase module fallback initialization failure:", error);
                     routesTableBody.innerHTML = `<tr><td colspan="12" style="color:red; text-align:center;">Failed to initialize database connection.</td></tr>`;
+                    alert(error.message);
                 }
             }
         }
