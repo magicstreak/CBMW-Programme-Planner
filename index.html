@@ -384,7 +384,7 @@
                             return set(ref(db, `walks/${id}`), data);
                         },
                         update: async (id, data) => {
-                            const newId = 'walks_'_data.walkID.trim();
+                            const newId = 'walks_'+data.walkID.trim();
                             if (id !== newId) {
                                 // If primary key walkID changed, delete the old node and set the new one
                                 await remove(ref(db, `walks/${id}`));
