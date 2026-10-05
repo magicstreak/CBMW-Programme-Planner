@@ -81,6 +81,124 @@
             color: #34495e;
             font-weight: 600;
         }
+
+        /* View mode (General / Admin) */
+        .topbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .topbar .status-badge {
+            margin-bottom: 0;
+        }
+        .view-toggle {
+            display: inline-flex;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .view-toggle button {
+            background: white;
+            color: #3498db;
+            border: none;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.85rem;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .view-toggle button + button {
+            border-left: 1px solid #3498db;
+        }
+        .view-toggle button.active {
+            background: #3498db;
+            color: white;
+            font-weight: 600;
+        }
+        .view-toggle button:focus-visible {
+            outline: 2px solid #2c3e50;
+            outline-offset: -2px;
+        }
+        body:not(.admin-mode) .admin-only {
+            display: none !important;
+        }
+
+        /* Sorting */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        th.sortable:hover {
+            background-color: #e8ecee;
+        }
+        th.sortable:focus-visible {
+            outline: 2px solid #3498db;
+            outline-offset: -2px;
+        }
+        th.sortable::after {
+            content: '\2195';
+            margin-left: 0.4rem;
+            font-size: 0.75rem;
+            color: #b2bec3;
+        }
+        th.sortable.sorted-asc::after {
+            content: '\25B2';
+            color: #3498db;
+        }
+        th.sortable.sorted-desc::after {
+            content: '\25BC';
+            color: #3498db;
+        }
+
+        /* Filters */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1rem;
+            align-items: flex-end;
+            margin-top: 1.25rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .filter-group.grow {
+            flex: 1 1 220px;
+        }
+        .filter-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #34495e;
+        }
+        .filter-group input, .filter-group select {
+            padding: 0.4rem 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        .filter-group input[type="number"] {
+            width: 6rem;
+        }
+        .filter-group.range .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .result-count {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: #636e72;
+        }
+
         .actions-cell {
             display: flex;
             gap: 0.5rem;
@@ -154,28 +272,96 @@
 <body>
 
     <h1>Walking Routes Dashboard</h1>
-    <div id="storageStatus" class="status-badge">Detecting environment...</div>
+    <div class="topbar">
+        <div id="storageStatus" class="status-badge">Detecting environment...</div>
+        <div class="view-toggle" role="group" aria-label="View mode">
+            <button type="button" id="generalViewBtn" class="active" aria-pressed="true">General view</button>
+            <button type="button" id="adminViewBtn" aria-pressed="false">Admin view</button>
+        </div>
+    </div>
     
     <div>
-        <button class="btn" id="addRouteBtn">Add New Route</button>
+        <button class="btn admin-only" id="addRouteBtn">Add New Route</button>
     </div>
+
+
+    <div class="filter-bar" id="filterBar">
+        <div class="filter-group grow">
+            <label for="filterSearch">Search</label>
+            <input type="search" id="filterSearch" placeholder="Number, name, leader, description, directions...">
+        </div>
+        <div class="filter-group">
+            <label for="filterGrade">Grade</label>
+            <select id="filterGrade">
+                <option value="">All</option>
+                <option value="E">E</option>
+                <option value="M">M</option>
+                <option value="MS">MS</option>
+                <option value="S">S</option>
+                <option value="VS">VS</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterTerrain">Terrain</label>
+            <select id="filterTerrain">
+                <option value="">All</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="X">X</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterScr">Scr</label>
+            <select id="filterScr">
+                <option value="">All</option>
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="3+">3+</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterLeader">Owner</label>
+            <select id="filterLeader">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="filter-group range">
+            <label for="filterDistMin">Distance (km)</label>
+            <div class="range-inputs">
+                <input type="number" id="filterDistMin" min="0" step="any" placeholder="Min">
+                <span>&ndash;</span>
+                <input type="number" id="filterDistMax" min="0" step="any" placeholder="Max">
+            </div>
+        </div>
+        <div class="filter-group">
+            <label for="filterAscentMax">Max ascent (m)</label>
+            <input type="number" id="filterAscentMax" min="0" step="any" placeholder="Any">
+        </div>
+        <div class="filter-group">
+            <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Clear filters</button>
+        </div>
+    </div>
+    <div class="result-count" id="resultCount" aria-live="polite"></div>
 
     <div class="table-container">
         <table id="routesTable">
             <thead>
                 <tr>
-                    <th>Walk Number</th>
-                    <th>Route Name</th>
-                    <th>Grade</th>
-                    <th>Distance</th>
-                    <th>Ascent</th>
-                    <th>Terrain</th>
-                    <th>Scr</th>
-                    <th>Time</th>
-                    <th>Owner</th>
-                    <th>Description</th>
-                    <th>Directions</th>
-                    <th>Actions</th>
+                    <th class="sortable" data-sort="walkID" tabindex="0" aria-sort="none" title="Click to sort">Walk Number</th>
+                    <th class="sortable" data-sort="Route_Name" tabindex="0" aria-sort="none" title="Click to sort">Route Name</th>
+                    <th class="sortable" data-sort="Grade" tabindex="0" aria-sort="none" title="Click to sort">Grade</th>
+                    <th class="sortable" data-sort="Distance" tabindex="0" aria-sort="none" title="Click to sort">Distance</th>
+                    <th class="sortable" data-sort="Ascent" tabindex="0" aria-sort="none" title="Click to sort">Ascent</th>
+                    <th class="sortable" data-sort="Terrain" tabindex="0" aria-sort="none" title="Click to sort">Terrain</th>
+                    <th class="sortable" data-sort="Scr" tabindex="0" aria-sort="none" title="Click to sort">Scr</th>
+                    <th class="sortable" data-sort="Total_Time" tabindex="0" aria-sort="none" title="Click to sort">Time</th>
+                    <th class="sortable" data-sort="Leader" tabindex="0" aria-sort="none" title="Click to sort">Owner</th>
+                    <th class="sortable" data-sort="Route_Description" tabindex="0" aria-sort="none" title="Click to sort">Description</th>
+                    <th class="sortable" data-sort="Directions" tabindex="0" aria-sort="none" title="Click to sort">Directions</th>
+                    <th class="admin-only">Actions</th>
                 </tr>
             </thead>
             <tbody id="routesTableBody">
@@ -290,6 +476,7 @@
         const addRouteBtn = document.getElementById('addRouteBtn');
         const cancelBtn = document.getElementById('cancelBtn');
 
+        let isAdmin = false;
         let isTestingMode = firebaseConfig.apiKey === "YOUR_API_KEY";
         let localRoutesData = {};
         let dbService = {};
@@ -402,19 +589,174 @@
             }
         }
 
+        // ---------- Sorting & filtering ----------
+        const GRADE_ORDER = ['E', 'M', 'MS', 'S', 'VS'];
+        const TERRAIN_ORDER = ['A', 'B', 'C', 'X'];
+        const SCR_ORDER = ['0', '1', '2', '3', '3+'];
+
+        const filterEls = {
+            search: document.getElementById('filterSearch'),
+            grade: document.getElementById('filterGrade'),
+            terrain: document.getElementById('filterTerrain'),
+            scr: document.getElementById('filterScr'),
+            leader: document.getElementById('filterLeader'),
+            distMin: document.getElementById('filterDistMin'),
+            distMax: document.getElementById('filterDistMax'),
+            ascentMax: document.getElementById('filterAscentMax')
+        };
+        const resultCount = document.getElementById('resultCount');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+        const sortHeaders = document.querySelectorAll('th.sortable');
+
+        let allRoutes = {};
+        const sortState = { key: null, dir: 'asc' };
+
+        function parseNum(s) {
+            const m = String(s ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+            return m ? parseFloat(m[0]) : null;
+        }
+
+        function distanceKm(s) {
+            const n = parseNum(s);
+            if (n === null) return null;
+            return /\bmi(les?)?\b/i.test(String(s)) ? n * 1.609344 : n;
+        }
+
+        function ascentMetres(s) {
+            const n = parseNum(s);
+            if (n === null) return null;
+            return /\b(ft|feet)\b/i.test(String(s)) ? n * 0.3048 : n;
+        }
+
+        function timeMinutes(s) {
+            const str = String(s ?? '').toLowerCase();
+            const colon = str.match(/(\d+):(\d{2})/);
+            if (colon) return parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10);
+            const h = str.match(/(\d+(?:[.,]\d+)?)\s*h/);
+            const m = str.match(/(\d+(?:[.,]\d+)?)\s*m/);
+            if (h || m) {
+                const hours = h ? parseFloat(h[1].replace(',', '.')) : 0;
+                const mins = m ? parseFloat(m[1].replace(',', '.')) : 0;
+                return hours * 60 + mins;
+            }
+            const n = parseNum(str);
+            return n === null ? null : n * 60; // bare number assumed to be hours
+        }
+
+        function orderIndex(list, value) {
+            const i = list.indexOf(String(value ?? '').trim().toUpperCase());
+            return i === -1 ? null : i;
+        }
+
+        function sortValue(route, key) {
+            switch (key) {
+                case 'Grade': return orderIndex(GRADE_ORDER, route.Grade);
+                case 'Terrain': return orderIndex(TERRAIN_ORDER, route.Terrain);
+                case 'Scr': return orderIndex(SCR_ORDER, route.Scr);
+                case 'Distance': return distanceKm(route.Distance);
+                case 'Ascent': return ascentMetres(route.Ascent);
+                case 'Total_Time': return timeMinutes(route.Total_Time);
+                default: {
+                    const v = String(route[key] ?? '').trim();
+                    return v === '' ? null : v;
+                }
+            }
+        }
+
+        function compareValues(a, b) {
+            if (typeof a === 'number' && typeof b === 'number') return a - b;
+            return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        function passesFilters(route) {
+            const q = filterEls.search.value.trim().toLowerCase();
+            if (q) {
+                const haystack = [route.walkID, route.Route_Name, route.Leader, route.Route_Description, route.Directions]
+                    .map(v => String(v ?? '').toLowerCase()).join('\n');
+                if (!haystack.includes(q)) return false;
+            }
+            if (filterEls.grade.value && String(route.Grade ?? '').trim() !== filterEls.grade.value) return false;
+            if (filterEls.terrain.value && String(route.Terrain ?? '').trim() !== filterEls.terrain.value) return false;
+            if (filterEls.scr.value && String(route.Scr ?? '').trim() !== filterEls.scr.value) return false;
+            if (filterEls.leader.value && String(route.Leader ?? '').trim() !== filterEls.leader.value) return false;
+
+            const dMin = parseFloat(filterEls.distMin.value);
+            const dMax = parseFloat(filterEls.distMax.value);
+            if (!isNaN(dMin) || !isNaN(dMax)) {
+                const d = distanceKm(route.Distance);
+                if (d === null) return false;
+                if (!isNaN(dMin) && d < dMin) return false;
+                if (!isNaN(dMax) && d > dMax) return false;
+            }
+
+            const aMax = parseFloat(filterEls.ascentMax.value);
+            if (!isNaN(aMax)) {
+                const a = ascentMetres(route.Ascent);
+                if (a === null || a > aMax) return false;
+            }
+            return true;
+        }
+
+        function populateLeaderOptions() {
+            const current = filterEls.leader.value;
+            const leaders = [...new Set(Object.values(allRoutes)
+                .map(r => String(r.Leader ?? '').trim())
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+            filterEls.leader.innerHTML = '<option value="">All</option>' +
+                leaders.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+            filterEls.leader.value = leaders.includes(current) ? current : '';
+        }
+
+        function updateSortIndicators() {
+            sortHeaders.forEach(th => {
+                const active = th.dataset.sort === sortState.key;
+                th.classList.toggle('sorted-asc', active && sortState.dir === 'asc');
+                th.classList.toggle('sorted-desc', active && sortState.dir === 'desc');
+                th.setAttribute('aria-sort', active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+            });
+        }
+
         function renderTable(data) {
+            allRoutes = data || {};
+            populateLeaderOptions();
+            renderView();
+        }
+
+        function renderView() {
             routesTableBody.innerHTML = '';
-            
-            if (Object.keys(data).length === 0) {
+            const total = Object.keys(allRoutes).length;
+
+            let entries = Object.entries(allRoutes).filter(([, route]) => passesFilters(route));
+
+            if (sortState.key) {
+                const dir = sortState.dir === 'asc' ? 1 : -1;
+                entries.sort(([, ra], [, rb]) => {
+                    const a = sortValue(ra, sortState.key);
+                    const b = sortValue(rb, sortState.key);
+                    if (a === null && b === null) return 0;
+                    if (a === null) return 1;   // empty values always last
+                    if (b === null) return -1;
+                    return compareValues(a, b) * dir;
+                });
+            }
+
+            updateSortIndicators();
+            resultCount.textContent = total === 0 ? '' : `Showing ${entries.length} of ${total} routes`;
+
+            if (total === 0) {
                 routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes found. Click 'Add New Route' to start testing.</td></tr>`;
                 return;
             }
+            if (entries.length === 0) {
+                routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes match the current filters.</td></tr>`;
+                return;
+            }
 
-            Object.keys(data).forEach((key) => {
-                
-                const route = data[key];
+            entries.forEach(([key, route]) => {
                 const tr = document.createElement('tr');
-                
+
                 tr.innerHTML = `
                     <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
                     <td>${escapeHtml(route.Route_Name || '')}</td>
@@ -425,11 +767,11 @@
                     <td>${escapeHtml(route.Scr || '0')}</td>
                     <td>${escapeHtml(route.Total_Time || '')}</td>
                     <td>${escapeHtml(route.Leader || '')}</td>
-                    <td title="${escapeHtml(route.Route_Description || '')}">${truncateText(route.Route_Description || '-', 20)}</td>
-                    <td title="${escapeHtml(route.Directions || '')}">${truncateText(route.Directions || '-', 20)}</td>
-                    <td class="actions-cell">
-                        <button class="btn edit-btn" data-id="${key}">Edit</button>
-                        <button class="btn btn-danger delete-btn" data-id="${key}">Delete</button>
+                    <td title="${escapeHtml(route.Route_Description || '')}">${escapeHtml(truncateText(route.Route_Description || '-', 20))}</td>
+                    <td title="${escapeHtml(route.Directions || '')}">${escapeHtml(truncateText(route.Directions || '-', 20))}</td>
+                    <td class="actions-cell admin-only">
+                        <button class="btn edit-btn" data-id="${escapeHtml(key)}">Edit</button>
+                        <button class="btn btn-danger delete-btn" data-id="${escapeHtml(key)}">Delete</button>
                     </td>
                 `;
                 routesTableBody.appendChild(tr);
@@ -438,7 +780,41 @@
             attachRowEventListeners();
         }
 
+        // Header click: ascending -> descending -> original order
+        function cycleSort(key) {
+            if (sortState.key !== key) {
+                sortState.key = key;
+                sortState.dir = 'asc';
+            } else if (sortState.dir === 'asc') {
+                sortState.dir = 'desc';
+            } else {
+                sortState.key = null;
+                sortState.dir = 'asc';
+            }
+            renderView();
+        }
+
+        sortHeaders.forEach(th => {
+            th.addEventListener('click', () => cycleSort(th.dataset.sort));
+            th.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    cycleSort(th.dataset.sort);
+                }
+            });
+        });
+
+        Object.values(filterEls).forEach(el => {
+            el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderView);
+        });
+
+        clearFiltersBtn.addEventListener('click', () => {
+            Object.values(filterEls).forEach(el => { el.value = ''; });
+            renderView();
+        });
+
         addRouteBtn.addEventListener('click', () => {
+            if (!isAdmin) return;
             routeForm.reset();
             routeIdInput.value = '';
             modalTitle.textContent = 'Create New Walking Profile';
@@ -451,6 +827,7 @@
 
         routeForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            if (!isAdmin) return;
             const id = routeIdInput.value;
             const routeData = {};
             fields.forEach(f => {
@@ -467,7 +844,7 @@
         function attachRowEventListeners() {
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    
+                    if (!isAdmin) return;
                     const id = e.target.getAttribute('data-id');
                     const route = localRoutesData[id];
                      
@@ -476,7 +853,7 @@
                             fields.forEach(f => {
                             elements[f].value = route[f] || '';
                         });
-                        modalTitle.textContent = `Edit Profile: ${route.routeName}`;
+                        modalTitle.textContent = `Edit Profile: ${route.Route_Name}`;
                         routeModal.style.display = 'flex';
                     }
                 });
@@ -484,6 +861,7 @@
 
             document.querySelectorAll('.delete-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
+                    if (!isAdmin) return;
                     const id = e.target.getAttribute('data-id');
                     if (confirm('Are you sure you want to delete this route profile?')) {
                         dbService.delete(id).catch((err) => console.error("Deletion failed:", err));
@@ -500,6 +878,24 @@
             if (str.length <= maxLen) return str;
             return str.substr(0, maxLen) + '...';
         }
+
+        // ---------- General / Admin view toggle ----------
+        const generalViewBtn = document.getElementById('generalViewBtn');
+        const adminViewBtn = document.getElementById('adminViewBtn');
+
+        function setMode(admin) {
+            isAdmin = admin;
+            document.body.classList.toggle('admin-mode', admin);
+            generalViewBtn.classList.toggle('active', !admin);
+            adminViewBtn.classList.toggle('active', admin);
+            generalViewBtn.setAttribute('aria-pressed', String(!admin));
+            adminViewBtn.setAttribute('aria-pressed', String(admin));
+            if (!admin) routeModal.style.display = 'none';
+        }
+
+        generalViewBtn.addEventListener('click', () => setMode(false));
+        adminViewBtn.addEventListener('click', () => setMode(true));
+        setMode(false); // always start in General view
 
         initApp();
     </script>
