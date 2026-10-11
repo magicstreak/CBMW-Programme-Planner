@@ -350,13 +350,13 @@
       { key: "Route_Name", label: "Route name", required: true },
       { key: "Pueblo", label: "Pueblo" },
       { key: "Grade", label: "Grade", type: "choice", options: GRADES },
-      { key: "Leader", label: "Leader", type: "choice", source: true },
+      { key: "Leader", label: "Leader", type: "choice", source: "leaders" },
       { key: "Start_Time", label: "Start time" },
       { key: "Distance", label: "Distance" },
       { key: "Ascent", label: "Ascent" },
       { key: "Total_Time", label: "Total time" },
       { key: "Terrain", label: "Terrain" },
-      { key: "Scr", label: "SCR", type: "choice", source: true },
+      { key: "Scr", label: "SCR", type: "choice", source: "walks" },
       { key: "Dogs", label: "Dogs" },
       { key: "Restrictions", label: "Restrictions", type: "textarea", full: true },
       { key: "Latitude", label: "Latitude" },
@@ -388,6 +388,7 @@
     const pendingFor = (id) => Object.values(requests).filter((r) => r && r.status === "pending" && r.walk_id === id);
     const pendingRequests = () => Object.values(requests).filter((r) => r && r.status === "pending")
       .sort((a, b) => String(a.requested_at).localeCompare(String(b.requested_at)));
+    const fullName = (l) => `${str(l?.first_name)} ${str(l?.surname)}`.trim();
     const leaderName = (id) => {
       const l = leaders.find((x) => x.leader_id === id);
       return l ? `${l.first_name || ""} ${l.surname || ""}`.trim() : "";
@@ -550,15 +551,19 @@
     let dialogMode = null;   // "create" | "edit" | "request"
     let dialogWalk = null;
 
-    // Dropdown options: fixed lists for Grade; for Leader and SCR, the values already used in the walks data.
-    // The current value is always included so existing records keep their value.
+    // Dropdown options: fixed list for Grade; Leader from the leaders database (scheduler app);
+    // SCR from the values already used in the walks data. The current value is always included.
+    const NO_LEADER_OPTIONS = ["~~ No Leader", "~~ Leader TBC"];
+    const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
     function choiceOptions(field, current) {
       let values;
       if (field.options) {
         values = [...field.options];
+      } else if (field.source === "leaders") {
+        values = [...new Set(leaders.map(fullName).filter(Boolean))].sort(byName);
+        values = [...NO_LEADER_OPTIONS, ...values];
       } else {
-        values = [...new Set(walks.map((w) => str(w[field.key])).filter(Boolean))]
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+        values = [...new Set(walks.map((w) => str(w[field.key])).filter(Boolean))].sort(byName);
       }
       if (current && !values.includes(current)) values.unshift(current);
       return values;
