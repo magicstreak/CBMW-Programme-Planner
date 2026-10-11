@@ -1,971 +1,863 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Walking Routes Manager</title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            margin: 2rem;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-            font-weight: bold;
-            border-radius: 4px;
-            margin-bottom: 1.5rem;
-        }
-        .status-local {
-            background-color: #ffeaa7;
-            color: #d63031;
-        }
-        .status-firebase {
-            background-color: #e3faf2;
-            color: #2ecc71;
-        }
-        .btn {
-            background-color: #3498db;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            white-space: nowrap;
-        }
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        .btn-danger {
-            background-color: #e74c3c;
-        }
-        .btn-danger:hover {
-            background-color: #c0392b;
-        }
-        .btn-secondary {
-            background-color: #95a5a6;
-        }
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-        
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border-radius: 4px;
-            background: white;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1300px;
-        }
-        th, td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            font-size: 0.9rem;
-        }
-        th {
-            background-color: #f4f6f7;
-            color: #34495e;
-            font-weight: 600;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walks Database</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #2d5b3e;
+      --primary-hover: #234a31;
+      --bg-muted: #f8fafc;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --amber-bg: #fef3c7;
+      --amber-text: #92400e;
+      --green-bg: #dcfce7;
+      --green-text: #166534;
+      --red: #b91c1c;
+      --radius-panel: 14px;
+      --radius-card: 10px;
+      --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --shadow-float: 0 16px 32px -8px rgba(15, 23, 42, 0.25);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --border: #334155;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --bg-muted: #1e293b;
+      }
+    }
+    :root[data-theme="dark"] {
+      --border: #334155;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --bg-muted: #1e293b;
+    }
 
-        /* View mode (General / Admin) */
-        .topbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.75rem 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .topbar .status-badge {
-            margin-bottom: 0;
-        }
-        .view-toggle {
-            display: inline-flex;
-            border: 1px solid #3498db;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        .view-toggle button {
-            background: white;
-            color: #3498db;
-            border: none;
-            padding: 0.35rem 0.9rem;
-            font-size: 0.85rem;
-            font-family: inherit;
-            cursor: pointer;
-        }
-        .view-toggle button + button {
-            border-left: 1px solid #3498db;
-        }
-        .view-toggle button.active {
-            background: #3498db;
-            color: white;
-            font-weight: 600;
-        }
-        .view-toggle button:focus-visible {
-            outline: 2px solid #2c3e50;
-            outline-offset: -2px;
-        }
-        body:not(.admin-mode) .admin-only {
-            display: none !important;
-        }
+    * { box-sizing: border-box; }
 
-        /* Sorting */
-        th.sortable {
-            cursor: pointer;
-            user-select: none;
-            white-space: nowrap;
-        }
-        th.sortable:hover {
-            background-color: #e8ecee;
-        }
-        th.sortable:focus-visible {
-            outline: 2px solid #3498db;
-            outline-offset: -2px;
-        }
-        th.sortable::after {
-            content: '\2195';
-            margin-left: 0.4rem;
-            font-size: 0.75rem;
-            color: #b2bec3;
-        }
-        th.sortable.sorted-asc::after {
-            content: '\25B2';
-            color: #3498db;
-        }
-        th.sortable.sorted-desc::after {
-            content: '\25BC';
-            color: #3498db;
-        }
+    body {
+      font-family: "Google Sans", system-ui, -apple-system, sans-serif;
+      background: #f6f5f0;
+      color: var(--text);
+      margin: 0;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-        /* Filters */
-        .filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem 1rem;
-            align-items: flex-end;
-            margin-top: 1.25rem;
-            padding: 1rem;
-            background: white;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .filter-group.grow {
-            flex: 1 1 220px;
-        }
-        .filter-group label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #34495e;
-        }
-        .filter-group input, .filter-group select {
-            padding: 0.4rem 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            box-sizing: border-box;
-        }
-        .filter-group input[type="number"] {
-            width: 6rem;
-        }
-        .filter-group.range .range-inputs {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-        .result-count {
-            margin-top: 0.75rem;
-            font-size: 0.85rem;
-            color: #636e72;
-        }
+    .page { width: 100%; max-width: 1200px; }
+    .page-header { text-align: center; margin-bottom: 24px; }
+    .page-header h1 { margin: 0 0 6px; font-size: 1.8rem; color: var(--primary); }
+    .page-header p { margin: 0; color: var(--text-muted); }
 
-        .actions-cell {
-            display: flex;
-            gap: 0.5rem;
-        }
+    .panel {
+      background: #fff;
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-panel);
+      padding: 20px;
+    }
 
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 650px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .modal h2 {
-            margin-top: 0;
-            margin-bottom: 1.5rem;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        .form-group {
-            margin-bottom: 0.5rem;
-        }
-        .form-group.full-width {
-            grid-column: span 2;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.25rem;
-            font-weight: 500;
-            font-size: 0.85rem;
-        }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        .form-group textarea {
-            resize: vertical;
-            height: 60px;
-        }
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-            margin-top: 1.5rem;
-        }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .toolbar-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .toolbar input[type="search"], .toolbar select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      min-width: 200px;
+    }
 
-        /* ---------- Iframe / small-viewport sizing ---------- */
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-        html {
-            max-width: 100%;
-        }
-        body {
-            max-width: 100%;
-        }
-        .modal-overlay {
-            padding: 1rem;
-        }
-        .modal {
-            max-height: 100%;
-        }
+    .btn {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { background: #f1f5f9; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { color: var(--red); border-color: #fca5a5; }
+    .btn-small { padding: 4px 10px; font-size: 0.85rem; }
 
-        @media (max-width: 900px) {
-            body {
-                margin: 1rem;
-            }
-            h1 {
-                font-size: 1.4rem;
-            }
-            table {
-                min-width: 1000px;
-            }
-            th, td {
-                padding: 0.5rem 0.6rem;
-                font-size: 0.8rem;
-            }
-            .filter-bar {
-                padding: 0.75rem;
-                gap: 0.5rem 0.75rem;
-            }
-            .modal {
-                padding: 1.25rem;
-            }
-        }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      background: var(--bg-muted);
+    }
+    .card h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--primary); }
+    .request-item { padding: 10px 0; border-top: 1px solid var(--border); }
+    .request-item:first-of-type { border-top: none; }
+    .request-item .who { font-weight: 600; }
+    .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
+    .change-list { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
+    .change-list li { margin-bottom: 2px; }
+    .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-        @media (max-width: 600px) {
-            body {
-                margin: 0.5rem;
-            }
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            .form-group.full-width {
-                grid-column: span 1;
-            }
-            .filter-group {
-                flex: 1 1 45%;
-            }
-            .filter-group.grow,
-            .filter-group.range {
-                flex: 1 1 100%;
-            }
-            .filter-group input,
-            .filter-group select,
-            .filter-group input[type="number"] {
-                width: 100%;
-            }
-            .filter-group.range .range-inputs input {
-                flex: 1;
-                min-width: 0;
-            }
-        }
-    </style>
+    .table-wrap { overflow-x: auto; }
+    .walks-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .walks-table th, .walks-table td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .walks-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .walks-table tbody tr.walk-row { cursor: pointer; }
+    .walks-table tbody tr.walk-row:hover > td { background: #f5faf6; }
+    .walks-table tr.is-open > td { background: #f0f9f3; }
+    .walks-table .chev-cell { width: 42px; }
+    .chev {
+      width: 30px; height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--primary);
+      cursor: pointer;
+      padding: 0;
+    }
+    .chev svg { display: block; margin: auto; }
+    .chev .chev-up { display: none; }
+    .chev[aria-expanded="true"] .chev-up { display: block; }
+    .chev[aria-expanded="true"] .chev-down { display: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .walk-id { font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap; }
+    .muted { color: var(--text-muted); }
+    .actions-cell { white-space: nowrap; }
+
+    .details-row > td { padding: 14px 16px 18px 20px; box-shadow: inset 4px 0 0 var(--primary); }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
+    .detail-grid .wide { grid-column: 1 / -1; }
+    .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .detail-value { white-space: pre-line; word-break: break-word; }
+    .detail-value a { color: var(--primary); }
+
+    .pill {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
+    .pill-approved { background: var(--green-bg); color: var(--green-text); }
+    .pill-rejected { background: #fee2e2; color: var(--red); }
+    .grade { font-weight: 700; }
+
+    .empty { text-align: center; color: var(--text-muted); padding: 24px 0; }
+
+    /* Dialog */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+    .modal[hidden] { display: none; }
+    .modal-card {
+      background: #fff;
+      color: var(--text);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-float);
+      padding: 22px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-card h2 { margin: 0 0 4px; color: var(--primary); }
+    .modal-card .lede { margin: 0 0 16px; color: var(--text-muted); font-size: 0.9rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+    .form-field textarea { min-height: 80px; resize: vertical; }
+    .form-field input:disabled { background: #f1f5f9; color: var(--text-muted); }
+    .form-field .hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
+    .form-error { margin: 12px 0 0; color: var(--red); font-size: 0.9rem; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+    @media (max-width: 640px) {
+      .form-grid, .detail-grid { grid-template-columns: 1fr; }
+      .toolbar input[type="search"], .toolbar select { min-width: 0; width: 100%; }
+    }
+  </style>
 </head>
+
 <body>
+  <div class="page">
+    <header class="page-header">
+      <h1 id="page-title">Walks Database</h1>
+      <p id="page-subtitle"></p>
+    </header>
 
-    <h1>Walking Routes Dashboard</h1>
-    <div class="topbar">
-        <div id="storageStatus" class="status-badge">Detecting environment...</div>
-        <div class="view-toggle" role="group" aria-label="View mode">
-            <button type="button" id="generalViewBtn" class="active" aria-pressed="true">General view</button>
-            <button type="button" id="adminViewBtn" aria-pressed="false">Admin view</button>
+    <main class="panel">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <input type="search" id="search" placeholder="Search walk ID, route, pueblo or grade" aria-label="Search walks" />
+          <select id="grade-filter" aria-label="Filter by grade">
+            <option value="">All grades</option>
+            <option value="E">E</option>
+            <option value="M">M</option>
+            <option value="MS">MS</option>
+            <option value="S">S</option>
+            <option value="VS">VS</option>
+          </select>
+          <div id="picker-wrap" class="toolbar-group" hidden>
+            <label for="leader-picker" class="muted">Requesting as</label>
+            <select id="leader-picker" aria-label="Choose your leader ID"></select>
+          </div>
         </div>
-    </div>
-    
-    <div>
-        <button class="btn admin-only" id="addRouteBtn">Add New Route</button>
-    </div>
+        <div class="toolbar-group">
+          <button type="button" class="btn btn-primary" id="add-walk" hidden>+ Add walk</button>
+        </div>
+      </div>
 
+      <section class="card" id="pending-panel" hidden>
+        <h2>Change requests waiting for approval <span class="muted" id="pending-count"></span></h2>
+        <div id="pending-list"></div>
+      </section>
 
-    <div class="filter-bar" id="filterBar">
-        <div class="filter-group grow">
-            <label for="filterSearch">Search</label>
-            <input type="search" id="filterSearch" placeholder="Number, name, leader, description, directions...">
-        </div>
-        <div class="filter-group">
-            <label for="filterGrade">Grade</label>
-            <select id="filterGrade">
-                <option value="">All</option>
-                <option value="E">E</option>
-                <option value="M">M</option>
-                <option value="MS">MS</option>
-                <option value="S">S</option>
-                <option value="VS">VS</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="filterTerrain">Terrain</label>
-            <select id="filterTerrain">
-                <option value="">All</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="X">X</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="filterScr">Scr</label>
-            <select id="filterScr">
-                <option value="">All</option>
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="3+">3+</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="filterLeader">Owner</label>
-            <select id="filterLeader">
-                <option value="">All</option>
-            </select>
-        </div>
-        <div class="filter-group range">
-            <label for="filterDistMin">Distance (km)</label>
-            <div class="range-inputs">
-                <input type="number" id="filterDistMin" min="0" step="any" placeholder="Min">
-                <span>&ndash;</span>
-                <input type="number" id="filterDistMax" min="0" step="any" placeholder="Max">
-            </div>
-        </div>
-        <div class="filter-group">
-            <label for="filterAscentMax">Max ascent (m)</label>
-            <input type="number" id="filterAscentMax" min="0" step="any" placeholder="Any">
-        </div>
-        <div class="filter-group">
-            <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Clear filters</button>
-        </div>
-    </div>
-    <div class="result-count" id="resultCount" aria-live="polite"></div>
+      <section class="card" id="my-requests-panel" hidden>
+        <h2>My change requests</h2>
+        <div id="my-requests-list"></div>
+      </section>
 
-    <div class="table-container">
-        <table id="routesTable">
-            <thead>
-                <tr>
-                    <th class="sortable" data-sort="walkID" tabindex="0" aria-sort="none" title="Click to sort">Walk Number</th>
-                    <th class="sortable" data-sort="Route_Name" tabindex="0" aria-sort="none" title="Click to sort">Route Name</th>
-                    <th class="sortable" data-sort="Grade" tabindex="0" aria-sort="none" title="Click to sort">Grade</th>
-                    <th class="sortable" data-sort="Distance" tabindex="0" aria-sort="none" title="Click to sort">Distance</th>
-                    <th class="sortable" data-sort="Ascent" tabindex="0" aria-sort="none" title="Click to sort">Ascent</th>
-                    <th class="sortable" data-sort="Terrain" tabindex="0" aria-sort="none" title="Click to sort">Terrain</th>
-                    <th class="sortable" data-sort="Scr" tabindex="0" aria-sort="none" title="Click to sort">Scr</th>
-                    <th class="sortable" data-sort="Total_Time" tabindex="0" aria-sort="none" title="Click to sort">Time</th>
-                    <th class="sortable" data-sort="Leader" tabindex="0" aria-sort="none" title="Click to sort">Owner</th>
-                    <th class="sortable" data-sort="Route_Description" tabindex="0" aria-sort="none" title="Click to sort">Description</th>
-                    <th class="sortable" data-sort="Directions" tabindex="0" aria-sort="none" title="Click to sort">Directions</th>
-                    <th class="admin-only">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="routesTableBody">
-                <tr><td colspan="12" style="text-align:center;">Loading application...</td></tr>
-            </tbody>
+      <div class="table-wrap">
+        <table class="walks-table">
+          <thead>
+            <tr>
+              <th class="chev-cell"><span class="sr-only">Details</span></th>
+              <th>Walk ID</th>
+              <th>Route</th>
+              <th>Pueblo</th>
+              <th>Grade</th>
+              <th>Distance</th>
+              <th>Ascent</th>
+              <th>Total time</th>
+              <th id="actions-head" hidden>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="walks-body"></tbody>
         </table>
-    </div>
+      </div>
+      <p class="empty" id="empty-note" hidden>No walks match the current filters.</p>
+    </main>
+  </div>
 
-    <!-- Modal Form for Add/Edit -->
-    <div class="modal-overlay" id="routeModal">
-        <div class="modal">
-            <h2 id="modalTitle">Add Route</h2>
-            <form id="routeForm">
-                <input type="hidden" id="routeId">
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="walkID">Route Number</label>
-                        <input type="text" id="walkID" required placeholder="e.g. R-01">
-                    </div>
-                    <div class="form-group">
-                        <label for="Route_Name">Route Name</label>
-                        <input type="text" id="Route_Name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="Grade">Grade</label>
-                        <select id="Grade">
-                            <option value="E">E</option>
-                            <option value="M">M</option>
-                            <option value="MS">MS</option>
-                            <option value="S">S</option>
-                            <option value="VS">VS</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="Distance">Distance</label>
-                        <input type="text" id="Distance" required placeholder="e.g. 5.4 km">
-                    </div>
-                    <div class="form-group">
-                        <label for="Ascent">Ascent</label>
-                        <input type="text" id="Ascent" placeholder="e.g. 230m">
-                    </div>
-                    <div class="form-group">
-                        <label for="Terrain">Terrain</label>
-                        <select id="Terrain">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="X">X</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="Scr">Scr (Score)</label>
-                        <select id="Scr">
-                            <option value="0">0</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="3+">3+</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="Total_Time">Time (Duration)</label>
-                        <input type="text" id="Total_Time" required placeholder="e.g. 2h 30m">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="Leader">Leader</label>
-                        <input type="text" id="Leader" required placeholder="Author or organization name">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="Route_Description">Route Description</label>
-                        <textarea id="Route_Description" placeholder="Brief summary of path features..."></textarea>
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="Directions">Directions</label>
-                        <textarea id="Directions" placeholder="Step-by-step path logs..."></textarea>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn" id="saveBtn">Save Route</button>
-                </div>
-            </form>
+  <!-- Add / edit / request-change dialog -->
+  <div class="modal" id="walk-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title"></h2>
+      <p class="lede" id="modal-lede"></p>
+      <form id="walk-form" novalidate>
+        <div class="form-grid" id="form-fields"></div>
+        <p class="form-error" id="form-error" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="modal-submit">Save</button>
         </div>
+      </form>
     </div>
+  </div>
 
-    <script type="module">
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-        const firebaseConfig = {
-        apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
-        authDomain: "programme-planning.firebaseapp.com",
-        databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "programme-planning",
-        storageBucket: "programme-planning.firebasestorage.app",
-        messagingSenderId: "1028011310189",
-        appId: "1:1028011310189:web:8ac4f37a8d248899735364",
-        measurementId: "G-BBQ4Q6TQHD"
-        };
+  <datalist id="grade-options">
+    <option value="E"></option>
+    <option value="M"></option>
+    <option value="MS"></option>
+    <option value="S"></option>
+    <option value="VS"></option>
+  </datalist>
 
-        const storageStatus = document.getElementById('storageStatus');
-        const routeModal = document.getElementById('routeModal');
-        const routeForm = document.getElementById('routeForm');
-        const modalTitle = document.getElementById('modalTitle');
-        const routeIdInput = document.getElementById('routeId');
-        
-        const fields = ['walkID', 'Route_Name', 'Route_Description', 'Grade', 'Distance', 'Ascent', 'Terrain', 'Scr', 'Total_Time', 'Directions', 'Leader'];
-        const elements = {};
-        fields.forEach(f => elements[f] = document.getElementById(f));
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const routesTableBody = document.getElementById('routesTableBody');
-        const addRouteBtn = document.getElementById('addRouteBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
+    /* ========================================================= SETUP ========================================================= */
+    // Walks live in the programme-planning project (same as the Walk Scheduler's master walks).
+    // Change requests are stored beside them in walk_requests. Walk bookings (calendar project) are read only, for delete checks.
+    const walksConfig = {
+      apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
+      authDomain: "programme-planning.firebaseapp.com",
+      databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "programme-planning",
+      storageBucket: "programme-planning.firebasestorage.app",
+      messagingSenderId: "1028011310189",
+      appId: "1:1028011310189:web:8ac4f37a8d248899735364",
+      measurementId: "G-BBQ4Q6TQHD"
+    };
+    const bookingsConfig = {
+      apiKey: "AIzaSyC0hEmdWHSlBkdnxrQiNt_RITYsbj3wvi0",
+      authDomain: "cbmw-walk-scheduler.firebaseapp.com",
+      databaseURL: "https://cbmw-walk-scheduler-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "cbmw-walk-scheduler",
+      storageBucket: "cbmw-walk-scheduler.firebasestorage.app",
+      messagingSenderId: "108766389213",
+      appId: "1:108766389213:web:cded7ada3d32874b380c34",
+      measurementId: "G-QFS6HHL007"
+    };
 
-        let isAdmin = false;
-        let isTestingMode = firebaseConfig.apiKey === "YOUR_API_KEY";
-        let localRoutesData = {};
-        let dbService = {};
+    // View comes from the hosting page: ?view=walker | leader | admin (default walker).
+    // Leader view also takes ?leader_id=101 so requests are attributed to that leader; otherwise the leader picks an ID.
+    const params = new URLSearchParams(window.location.search);
+    const VIEW = (() => {
+      const v = params.get("view") || window.WALKS_VIEW || "walker";
+      return ["walker", "leader", "admin"].includes(v) ? v : "walker";
+    })();
+    const isAdmin = VIEW === "admin";
+    const isLeader = VIEW === "leader";
+    let myLeaderId = isLeader ? (params.get("leader_id") || "") : "";
 
-        async function initApp() {
-            if (isTestingMode) {
-                storageStatus.textContent = "Testing Mode: Using LocalStorage";
-                storageStatus.className = "status-badge status-local";
+    let walksDb = null;
+    let bookingsDb = null;
+    let walks = [];            // sorted by Walk ID
+    let requests = {};         // walk_requests/{id}
+    let bookings = {};         // walk_bookings (read only)
+    let leaders = [];          // leaders (read only, for the requester picker and names)
+    const expandedWalks = new Set();
 
-                dbService = {
-                    init: (callback) => {
-                        const loadData = () => {
-                            const data = JSON.parse(localStorage.getItem('walks')) || {};
-                            localRoutesData = data;
-                            callback(data);
-                        };
-                        loadData();
-                        window.addEventListener('storage', loadData);
-                    },
-                    create: (data) => {
-                       // const id = 'route_' + Date.now();
-                        const id = data.walkID.trim();
-                        if (!id) return Promise.reject("Route Number is required.");
+    /* ========================================================= FIELDS ========================================================= */
+    const GRADES = ["E", "M", "MS", "S", "VS"];
+    // Every attribute found on walks records in the programme-planning export. All are editable.
+    // Field names match the database exactly (note WiS_URL, not WIS_URL).
+    const EDITABLE_FIELDS = [
+      { key: "Route_Name", label: "Route name", required: true },
+      { key: "Pueblo", label: "Pueblo" },
+      { key: "Grade", label: "Grade", type: "grade", hint: "E, M, MS, S or VS" },
+      { key: "Leader", label: "Leader" },
+      { key: "Start_Time", label: "Start time" },
+      { key: "Distance", label: "Distance" },
+      { key: "Ascent", label: "Ascent" },
+      { key: "Total_Time", label: "Total time" },
+      { key: "Terrain", label: "Terrain" },
+      { key: "Scr", label: "SCR" },
+      { key: "Dogs", label: "Dogs" },
+      { key: "Restrictions", label: "Restrictions", type: "textarea", full: true },
+      { key: "Latitude", label: "Latitude" },
+      { key: "Longitude", label: "Longitude" },
+      { key: "WiS_URL", label: "WiS URL", type: "url", full: true },
+      { key: "WiS_Bitly_Link", label: "WiS short link", type: "url" },
+      { key: "KomootBitly", label: "Komoot link", type: "url" },
+      { key: "Route_Description", label: "Route description", type: "textarea", full: true },
+      { key: "Directions", label: "Driving directions", type: "textarea", full: true },
+      { key: "Lunch_or_Break_Notes", label: "Lunch or break notes", type: "textarea", full: true },
+      { key: "Reservation_Notes", label: "Reservation notes", type: "textarea", full: true },
+      { key: "Season_last_walked_or_offered", label: "Season last walked or offered" },
+      { key: "Last_offered_or_led_by", label: "Last offered or led by" },
+      { key: "X", label: "X" },
+      { key: "walkID", label: "walkID (legacy numeric ID)" },
+    ];
+    // The walk key is the database key, e.g. walk_025. Bookings store it as walk_number.
+    const ID_FIELD = { key: "walk_key", label: "Walk key", required: true, hint: "e.g. walk_610. Bookings use this as walk number." };
+    const LABELS = Object.fromEntries([ID_FIELD, ...EDITABLE_FIELDS].map((f) => [f.key, f.label]));
 
-                        const currentData = JSON.parse(localStorage.getItem('walks')) || {};
-                        if (currentData[id]) return Promise.reject(`Route ${id} already exists.`);
+    /* ========================================================= HELPERS ========================================================= */
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+    const str = (v) => String(v ?? "").trim();
+    const walkById = (id) => walks.find((w) => w.id === id) || null;
+    const pendingFor = (id) => Object.values(requests).filter((r) => r && r.status === "pending" && r.walk_id === id);
+    const pendingRequests = () => Object.values(requests).filter((r) => r && r.status === "pending")
+      .sort((a, b) => String(a.requested_at).localeCompare(String(b.requested_at)));
+    const leaderName = (id) => {
+      const l = leaders.find((x) => x.leader_id === id);
+      return l ? `${l.first_name || ""} ${l.surname || ""}`.trim() : "";
+    };
+    const sortById = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
 
-                        currentData[id] = data;
-                        localStorage.setItem('walks', JSON.stringify(currentData));
-                        dbService.refresh();
-                        return Promise.resolve();                        
-                    },
-                    update: (id, data) => {
-                        const currentData = JSON.parse(localStorage.getItem('walks')) || {};
-                        
-                        // If user changes walkID during an edit, remove the old key entity
-                        if (id !== data.walkID.trim()) {
-                            delete currentData[id];
-                        }
-                        
-                        const newId = data.walkID.trim();
-                        currentData[newId] = data;
-                        localStorage.setItem('walks', JSON.stringify(currentData));
-                        dbService.refresh();
-                        return Promise.resolve();
-                    },
-                    delete: (id) => {
-                        const currentData = JSON.parse(localStorage.getItem('walks')) || {};
-                        delete currentData[id];
-                        localStorage.setItem('walks', JSON.stringify(currentData));
-                        dbService.refresh();
-                        return Promise.resolve();
-                    },
-                    refresh: () => {
-                        const data = JSON.parse(localStorage.getItem('walks')) || {};
-                        localRoutesData = data;
-                        renderTable(data);
-                    }
-                };
-                dbService.init(renderTable);
+    function nextWalkId() {
+      const nums = walks.map((w) => { const m = w.id.match(/^walk_(\d{3})$/); return m ? Number(m[1]) : 0; });
+      return `walk_${String(Math.max(0, ...nums) + 1).padStart(3, "0")}`;
+    }
 
-            } else {
-                storageStatus.textContent = "Production Mode: Firebase Connected";
-                storageStatus.className = "status-badge status-firebase";
+    // Walk bookings that point at this walk (by walk number or ID)
+    function bookingCountFor(id) {
+      return Object.values(bookings).filter(Boolean).filter((b) =>
+        String(b.walk_number ?? "") === id || String(b.walk_id ?? "") === id
+      ).length;
+    }
 
-                try {
-                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
-                    const { getDatabase, ref, set, onValue, update, remove, get } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return isNaN(d) ? "" : d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    const statusLabel = (s) => ({ pending: "Waiting for approval", approved: "Approved", rejected: "Not approved" }[s] || s);
 
-                    const app = initializeApp(firebaseConfig);
-                    const db = getDatabase(app);
-                    const routesRef = ref(db, 'walks');
+    // Blank optional values are stored as null so Firebase removes them
+    const toStored = (v) => String(v ?? "");
 
-                    dbService = {
-                        init: (callback) => {
-                            onValue(routesRef, (snapshot) => {
-                                const data = snapshot.val() || {};
-                                localRoutesData = data;
-                                callback(data);
-                            });
-                        },
-                        create: async (data) => {
-                            const id = 'walk_'+data.walkID.trim();
-                            if (!id) throw new Error("Route Number is required.");
-                            
-                            // Check if walkID already exists before writing
-                            const snapshot = await get(ref(db, `walks/${id}`));
-                            if (snapshot.exists()) {
-                                throw new Error(`Route ${id} already exists.`);
-                            }
-                            
-                            return set(ref(db, `walks/${id}`), data);
-                        },
-                        update: async (id, data) => {
-                            const newId = 'walk_'+data.walkID.trim();
-                            if (id !== newId) {
-                                // If primary key walkID changed, delete the old node and set the new one
-                                await remove(ref(db, `walks/${id}`));
-                                return set(ref(db, `walks/${newId}`), data);
-                            }
-                            return update(ref(db, `walks/${id}`), data);
-                        },
-                        delete: (id) => remove(ref(db, `walks/${id}`))
-                    };
-                    dbService.init(renderTable);
-                } catch (error) {
-                    console.error("Firebase module fallback initialization failure:", error);
-                    routesTableBody.innerHTML = `<tr><td colspan="12" style="color:red; text-align:center;">Failed to initialize database connection.</td></tr>`;
-                }
+    /* ========================================================= RENDER ========================================================= */
+    function setupPage() {
+      const titles = {
+        walker: ["Walks Database", "Read-only list of walk routes."],
+        leader: ["Walks Database", "Browse the walks. You can request a change to any walk; an admin approves it first."],
+        admin: ["Walks Database", "Add, edit or remove walks, and approve or reject change requests."],
+      };
+      document.getElementById("page-title").textContent = titles[VIEW][0];
+      document.getElementById("page-subtitle").textContent = titles[VIEW][1];
+      document.getElementById("add-walk").hidden = !isAdmin;
+      document.getElementById("actions-head").hidden = VIEW === "walker";
+      document.getElementById("pending-panel").hidden = !isAdmin;
+      document.getElementById("picker-wrap").hidden = !isLeader || !!params.get("leader_id");
+    }
+
+    function renderPicker() {
+      if (!isLeader) return;
+      const select = document.getElementById("leader-picker");
+      select.innerHTML = `<option value="" ${myLeaderId ? "" : "selected"} disabled>Choose a leader ID</option>` +
+        leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
+    }
+
+    function detailGridHtml(walk) {
+      const cell = (f) => {
+        const value = str(walk[f.key]);
+        const shown = !value ? '<span class="muted">–</span>'
+          : f.type === "url" && /^https?:\/\//.test(value)
+            ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`
+            : escapeHtml(value);
+        return `<div class="${f.full ? "wide" : ""}">
+          <div class="detail-label">${escapeHtml(f.label)}</div>
+          <div class="detail-value">${shown}</div>
+        </div>`;
+      };
+      return `<div class="detail-grid">${EDITABLE_FIELDS.map(cell).join("")}</div>`;
+    }
+
+    function renderTable() {
+      const term = str(document.getElementById("search").value).toLowerCase();
+      const grade = document.getElementById("grade-filter").value;
+      const rows = walks.filter((w) => {
+        if (grade && str(w.Grade) !== grade) return false;
+        if (!term) return true;
+        return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
+      });
+      document.getElementById("empty-note").hidden = rows.length > 0;
+
+      const html = [];
+      for (const w of rows) {
+        const open = expandedWalks.has(w.id);
+        const waiting = pendingFor(w.id).length > 0;
+        const actions = [];
+        if (isAdmin) {
+          actions.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
+          actions.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+        } else if (isLeader) {
+          actions.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
+        }
+
+        html.push(`<tr class="walk-row ${open ? "is-open" : ""}" data-id="${escapeHtml(w.id)}">
+          <td class="chev-cell">
+            <button type="button" class="chev" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} details for walk ${escapeHtml(w.id)}" data-action="toggle" data-id="${escapeHtml(w.id)}">
+              <svg class="chev-down" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg class="chev-up" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>
+            </button>
+          </td>
+          <td class="walk-id">${escapeHtml(w.id)}</td>
+          <td>${escapeHtml(w.Route_Name) || "–"}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
+          <td>${escapeHtml(w.Pueblo) || "–"}</td>
+          <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
+          <td>${escapeHtml(w.Distance) || "–"}</td>
+          <td>${escapeHtml(w.Ascent) || "–"}</td>
+          <td>${escapeHtml(w.Total_Time) || "–"}</td>
+          ${VIEW === "walker" ? "" : `<td class="actions-cell">${actions.join(" ")}</td>`}
+        </tr>`);
+        if (open) {
+          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 8 : 9}">${detailGridHtml(w)}</td></tr>`);
+        }
+      }
+      document.getElementById("walks-body").innerHTML = html.join("");
+      renderPicker();
+    }
+
+    function changeListHtml(request) {
+      return `<ul class="change-list">${Object.entries(request.changes || {}).map(([key, after]) => {
+        const before = request.before?.[key];
+        return `<li><strong>${escapeHtml(LABELS[key] || key)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
+      }).join("")}</ul>`;
+    }
+
+    function renderPending() {
+      if (!isAdmin) return;
+      const list = pendingRequests();
+      document.getElementById("pending-count").textContent = list.length ? `(${list.length})` : "";
+      document.getElementById("pending-list").innerHTML = list.length ? list.map((r) => {
+        const requester = r.requested_by ? `${escapeHtml(r.requested_by)}${leaderName(r.requested_by) ? " – " + escapeHtml(leaderName(r.requested_by)) : ""}` : "Unknown leader";
+        return `<div class="request-item">
+          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
+          ${changeListHtml(r)}
+          <div class="request-actions">
+            <button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>
+            <button type="button" class="btn btn-small btn-danger" data-action="reject" data-request="${escapeHtml(r.request_id)}">Reject</button>
+          </div>
+        </div>`;
+      }).join("") : `<p class="empty" style="padding:8px 0">No change requests waiting.</p>`;
+    }
+
+    function renderMyRequests() {
+      const panel = document.getElementById("my-requests-panel");
+      if (!isLeader || !myLeaderId) { panel.hidden = true; return; }
+      const mine = Object.values(requests).filter((r) => r && r.requested_by === myLeaderId)
+        .sort((a, b) => String(b.requested_at).localeCompare(String(a.requested_at)));
+      panel.hidden = mine.length === 0;
+      document.getElementById("my-requests-list").innerHTML = mine.map((r) => `
+        <div class="request-item">
+          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="meta">Requested ${escapeHtml(formatDate(r.requested_at))} · <span class="pill pill-${escapeHtml(r.status)}">${escapeHtml(statusLabel(r.status))}</span></div>
+          ${changeListHtml(r)}
+          ${r.status === "rejected" && r.reason ? `<div class="meta">Reason: ${escapeHtml(r.reason)}</div>` : ""}
+        </div>`).join("");
+    }
+
+    function renderAll() {
+      renderTable();
+      renderPending();
+      renderMyRequests();
+    }
+
+    /* ========================================================= DIALOG ========================================================= */
+    const modal = document.getElementById("walk-modal");
+    const form = document.getElementById("walk-form");
+    let dialogMode = null;   // "create" | "edit" | "request"
+    let dialogWalk = null;
+
+    function fieldHtml(field, value, disabled) {
+      const id = `f-${field.key}`;
+      const val = escapeHtml(value ?? "");
+      let control;
+      if (field.type === "grade") {
+        control = `<input id="${id}" name="${field.key}" type="text" list="grade-options" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
+      } else if (field.type === "textarea") {
+        control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
+      } else {
+        const type = field.type === "url" ? "url" : "text";
+        control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
+      }
+      return `<div class="form-field ${field.full ? "full" : ""}">
+        <label for="${id}">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>
+        ${control}
+        ${field.hint ? `<div class="hint">${escapeHtml(field.hint)}</div>` : ""}
+      </div>`;
+    }
+
+    function openDialog(mode, walk = null) {
+      dialogMode = mode;
+      dialogWalk = walk;
+      const title = document.getElementById("modal-title");
+      const lede = document.getElementById("modal-lede");
+      const submit = document.getElementById("modal-submit");
+      document.getElementById("form-error").hidden = true;
+
+      let fields;
+      if (mode === "create") {
+        title.textContent = "Add walk";
+        lede.textContent = "Creates a new walk in the walks database.";
+        submit.textContent = "Add walk";
+        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+      } else if (mode === "edit") {
+        title.textContent = `Edit walk ${walk.id}`;
+        lede.textContent = "Changes apply straight away.";
+        submit.textContent = "Save changes";
+        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+      } else {
+        title.textContent = `Request a change: walk ${walk.id}`;
+        lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
+        submit.textContent = "Send request";
+        fields = EDITABLE_FIELDS;
+      }
+
+      document.getElementById("form-fields").innerHTML = fields.map((f) => {
+        const value = mode === "create"
+          ? (f.key === "walk_key" ? nextWalkId() : "")
+          : (f.key === "walk_key" ? walk.id : str(walk?.[f.key]));
+        return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
+      }).join("");
+      modal.hidden = false;
+      document.getElementById(mode === "create" ? "f-walk_key" : "f-Route_Name")?.focus();
+    }
+
+    function closeDialog() {
+      modal.hidden = true;
+      dialogMode = null;
+      dialogWalk = null;
+    }
+
+    function showError(message) {
+      const error = document.getElementById("form-error");
+      error.textContent = message;
+      error.hidden = false;
+      return null;
+    }
+
+    // Reads and checks the form. Returns the cleaned values, or null after showing an error.
+    function readForm(mode) {
+      const get = (key) => str(form.elements[key]?.value);
+      const record = {};
+      for (const f of EDITABLE_FIELDS) record[f.key] = get(f.key);
+      if (mode !== "request") record.walk_key = get("walk_key");
+
+      if (mode !== "request") {
+        if (!record.walk_key) return showError("Walk key is required.");
+        if (!/^[A-Za-z0-9_-]+$/.test(record.walk_key)) return showError("Walk key can only use letters, numbers, _ and -.");
+        if (mode === "create" && walkById(record.walk_key)) return showError(`Walk key ${record.walk_key} is already used.`);
+      }
+      for (const f of EDITABLE_FIELDS) {
+        if (f.required && !record[f.key]) return showError(`${f.label} is required.`);
+      }
+      if (record.Grade && !GRADES.includes(record.Grade)) return showError("Grade must be E, M, MS, S or VS.");
+
+      const lat = record.Latitude, lon = record.Longitude;
+      if (Boolean(lat) !== Boolean(lon)) return showError("Enter both meeting point latitude and longitude, or leave both blank.");
+      if (lat && (!Number.isFinite(Number(lat)) || Math.abs(Number(lat)) > 90)) return showError("Latitude must be a number between -90 and 90.");
+      if (lon && (!Number.isFinite(Number(lon)) || Math.abs(Number(lon)) > 180)) return showError("Longitude must be a number between -180 and 180.");
+
+      for (const f of EDITABLE_FIELDS.filter((x) => x.type === "url")) {
+        if (!record[f.key]) continue;
+        try {
+          const u = new URL(record[f.key]);
+          if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+        } catch (_) {
+          return showError(`${f.label} must be a full web address starting with https://`);
+        }
+      }
+      return record;
+    }
+
+    /* ========================================================= ACTIONS ========================================================= */
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!dialogMode || !walksDb) return;
+      const mode = dialogMode;
+      const record = readForm(mode);
+      if (!record) return;
+
+      try {
+        if (mode === "create") {
+          const data = {};
+          for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          await set(ref(walksDb, "walks/" + record.walk_key), data);
+        } else if (mode === "edit") {
+          // update() keeps any fields this page does not manage
+          const data = {};
+          for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          await update(ref(walksDb, "walks/" + dialogWalk.id), data);
+        } else {
+          const current = dialogWalk;
+          const changes = {};
+          const before = {};
+          for (const f of EDITABLE_FIELDS) {
+            const was = str(current[f.key]);
+            if (record[f.key] !== was) {
+              changes[f.key] = record[f.key];
+              before[f.key] = was;
             }
+          }
+          if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
+          if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
+          if (!myLeaderId) return showError("Choose the leader ID you are requesting as.");
+
+          const requestId = `${current.id}_${Date.now()}`;
+          await set(ref(walksDb, "walk_requests/" + requestId), {
+            request_id: requestId,
+            walk_id: current.id,
+            requested_by: myLeaderId,
+            status: "pending",
+            requested_at: new Date().toISOString(),
+            changes,
+            before,
+          });
         }
+        closeDialog();
+      } catch (err) {
+        console.error("Save failed:", err);
+        showError("Could not save. Check the database connection and permissions.");
+      }
+    });
 
-        // ---------- Sorting & filtering ----------
-        const GRADE_ORDER = ['E', 'M', 'MS', 'S', 'VS'];
-        const TERRAIN_ORDER = ['A', 'B', 'C', 'X'];
-        const SCR_ORDER = ['0', '1', '2', '3', '3+'];
+    document.getElementById("modal-cancel").addEventListener("click", closeDialog);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeDialog(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeDialog(); });
 
-        const filterEls = {
-            search: document.getElementById('filterSearch'),
-            grade: document.getElementById('filterGrade'),
-            terrain: document.getElementById('filterTerrain'),
-            scr: document.getElementById('filterScr'),
-            leader: document.getElementById('filterLeader'),
-            distMin: document.getElementById('filterDistMin'),
-            distMax: document.getElementById('filterDistMax'),
-            ascentMax: document.getElementById('filterAscentMax')
-        };
-        const resultCount = document.getElementById('resultCount');
-        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        const sortHeaders = document.querySelectorAll('th.sortable');
+    document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
+    document.getElementById("search").addEventListener("input", renderTable);
+    document.getElementById("grade-filter").addEventListener("change", renderTable);
+    document.getElementById("leader-picker").addEventListener("change", (e) => {
+      myLeaderId = e.target.value;
+      renderAll();
+    });
 
-        let allRoutes = {};
-        const sortState = { key: null, dir: 'asc' };
+    // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
+    document.getElementById("walks-body").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-action]");
+      const clickedRow = e.target.closest("tr.walk-row");
 
-        function parseNum(s) {
-            const m = String(s ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
-            return m ? parseFloat(m[0]) : null;
+      if (!btn) {
+        // Whole row toggles, except when a control is clicked
+        if (clickedRow && !e.target.closest("button, a")) toggleWalk(clickedRow.dataset.id);
+        return;
+      }
+      const walk = walkById(btn.dataset.id);
+      if (!walk) return;
+
+      if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
+      if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
+      if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
+      if (btn.dataset.action === "delete" && isAdmin) {
+        const used = bookingCountFor(walk.id);
+        const pending = pendingFor(walk.id).length;
+        const notes = [];
+        if (used) notes.push(`${used} walk booking(s) use this walk number. They will no longer link to a route.`);
+        if (pending) notes.push(`${pending} change request(s) for this walk will be left waiting and cannot be approved.`);
+        const message = `Delete walk ${walk.id} (${walk.Route_Name || "no name"})?${notes.length ? "\n\n" + notes.join("\n") : ""}`;
+        if (!confirm(message)) return;
+        try {
+          await remove(ref(walksDb, "walks/" + walk.id));
+          expandedWalks.delete(walk.id);
+        } catch (err) {
+          console.error("Delete failed:", err);
+          alert("Could not delete. Check the database permissions.");
         }
+      }
+    });
 
-        function distanceKm(s) {
-            const n = parseNum(s);
-            if (n === null) return null;
-            return /\bmi(les?)?\b/i.test(String(s)) ? n * 1.609344 : n;
+    function toggleWalk(id) {
+      if (expandedWalks.has(id)) expandedWalks.delete(id);
+      else expandedWalks.add(id);
+      renderTable();
+    }
+
+    // Pending request buttons (admin)
+    document.getElementById("pending-list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn || !isAdmin) return;
+      const request = requests[btn.dataset.request];
+      if (!request || request.status !== "pending") return;
+
+      try {
+        if (btn.dataset.action === "approve") {
+          const walk = walkById(request.walk_id);
+          if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
+          if (!confirm(`Approve this change to walk ${walk.id}?`)) return;
+          const data = {};
+          for (const [key, value] of Object.entries(request.changes || {})) data[key] = toStored(value);
+          await update(ref(walksDb, "walks/" + request.walk_id), data);
+          await update(ref(walksDb, "walk_requests/" + request.request_id), {
+            status: "approved",
+            reviewed_at: new Date().toISOString(),
+          });
         }
-
-        function ascentMetres(s) {
-            const n = parseNum(s);
-            if (n === null) return null;
-            return /\b(ft|feet)\b/i.test(String(s)) ? n * 0.3048 : n;
+        if (btn.dataset.action === "reject") {
+          const reason = prompt("Reason for rejecting (optional):", "");
+          if (reason === null) return;
+          await update(ref(walksDb, "walk_requests/" + request.request_id), {
+            status: "rejected",
+            reason: str(reason),
+            reviewed_at: new Date().toISOString(),
+          });
         }
+      } catch (err) {
+        console.error("Review failed:", err);
+        alert("Could not update the request. Check the database permissions.");
+      }
+    });
 
-        function timeMinutes(s) {
-            const str = String(s ?? '').toLowerCase();
-            const colon = str.match(/(\d+):(\d{2})/);
-            if (colon) return parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10);
-            const h = str.match(/(\d+(?:[.,]\d+)?)\s*h/);
-            const m = str.match(/(\d+(?:[.,]\d+)?)\s*m/);
-            if (h || m) {
-                const hours = h ? parseFloat(h[1].replace(',', '.')) : 0;
-                const mins = m ? parseFloat(m[1].replace(',', '.')) : 0;
-                return hours * 60 + mins;
-            }
-            const n = parseNum(str);
-            return n === null ? null : n * 60; // bare number assumed to be hours
-        }
+    /* ========================================================= DATA ========================================================= */
+    function start() {
+      setupPage();
+      if (!walksDb) {
+        document.getElementById("walks-body").innerHTML = `<tr><td colspan="9" class="empty">The walks database could not be reached.</td></tr>`;
+        return;
+      }
 
-        function orderIndex(list, value) {
-            const i = list.indexOf(String(value ?? '').trim().toUpperCase());
-            return i === -1 ? null : i;
-        }
+      onValue(ref(walksDb, "walks"), (snapshot) => {
+        const data = snapshot.val() || {};
+        walks = Object.entries(data)
+          .filter(([, w]) => w)
+          .map(([key, w]) => ({ ...w, id: key }))
+          .sort(sortById);
+        renderAll();
+      }, (error) => console.error("Unable to load walks:", error));
 
-        function sortValue(route, key) {
-            switch (key) {
-                case 'Grade': return orderIndex(GRADE_ORDER, route.Grade);
-                case 'Terrain': return orderIndex(TERRAIN_ORDER, route.Terrain);
-                case 'Scr': return orderIndex(SCR_ORDER, route.Scr);
-                case 'Distance': return distanceKm(route.Distance);
-                case 'Ascent': return ascentMetres(route.Ascent);
-                case 'Total_Time': return timeMinutes(route.Total_Time);
-                default: {
-                    const v = String(route[key] ?? '').trim();
-                    return v === '' ? null : v;
-                }
-            }
-        }
+      onValue(ref(walksDb, "walk_requests"), (snapshot) => {
+        requests = snapshot.val() || {};
+        renderAll();
+      }, (error) => console.error("Unable to load change requests:", error));
 
-        function compareValues(a, b) {
-            if (typeof a === 'number' && typeof b === 'number') return a - b;
-            return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
-        }
+      // Leaders and walk bookings live in the calendar project. Both are read only here.
+      if (bookingsDb) {
+        onValue(ref(bookingsDb, "leaders"), (snapshot) => {
+          leaders = Object.values(snapshot.val() || {}).filter(Boolean)
+            .sort((a, b) => Number(a.leader_id) - Number(b.leader_id));
+          renderAll();
+        }, (error) => console.error("Unable to load leaders:", error));
 
-        function passesFilters(route) {
-            const q = filterEls.search.value.trim().toLowerCase();
-            if (q) {
-                const haystack = [route.walkID, route.Route_Name, route.Leader, route.Route_Description, route.Directions]
-                    .map(v => String(v ?? '').toLowerCase()).join('\n');
-                if (!haystack.includes(q)) return false;
-            }
-            if (filterEls.grade.value && String(route.Grade ?? '').trim() !== filterEls.grade.value) return false;
-            if (filterEls.terrain.value && String(route.Terrain ?? '').trim() !== filterEls.terrain.value) return false;
-            if (filterEls.scr.value && String(route.Scr ?? '').trim() !== filterEls.scr.value) return false;
-            if (filterEls.leader.value && String(route.Leader ?? '').trim() !== filterEls.leader.value) return false;
+        onValue(ref(bookingsDb, "walk_bookings"), (snapshot) => {
+          bookings = snapshot.val() || {};
+        }, (error) => console.error("Unable to load bookings:", error));
+      }
+    }
 
-            const dMin = parseFloat(filterEls.distMin.value);
-            const dMax = parseFloat(filterEls.distMax.value);
-            if (!isNaN(dMin) || !isNaN(dMax)) {
-                const d = distanceKm(route.Distance);
-                if (d === null) return false;
-                if (!isNaN(dMin) && d < dMin) return false;
-                if (!isNaN(dMax) && d > dMax) return false;
-            }
-
-            const aMax = parseFloat(filterEls.ascentMax.value);
-            if (!isNaN(aMax)) {
-                const a = ascentMetres(route.Ascent);
-                if (a === null || a > aMax) return false;
-            }
-            return true;
-        }
-
-        function populateLeaderOptions() {
-            const current = filterEls.leader.value;
-            const leaders = [...new Set(Object.values(allRoutes)
-                .map(r => String(r.Leader ?? '').trim())
-                .filter(Boolean))]
-                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-
-            filterEls.leader.innerHTML = '<option value="">All</option>' +
-                leaders.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
-            filterEls.leader.value = leaders.includes(current) ? current : '';
-        }
-
-        function updateSortIndicators() {
-            sortHeaders.forEach(th => {
-                const active = th.dataset.sort === sortState.key;
-                th.classList.toggle('sorted-asc', active && sortState.dir === 'asc');
-                th.classList.toggle('sorted-desc', active && sortState.dir === 'desc');
-                th.setAttribute('aria-sort', active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none');
-            });
-        }
-
-        function renderTable(data) {
-            allRoutes = data || {};
-            populateLeaderOptions();
-            renderView();
-        }
-
-        function renderView() {
-            routesTableBody.innerHTML = '';
-            const total = Object.keys(allRoutes).length;
-
-            let entries = Object.entries(allRoutes).filter(([, route]) => passesFilters(route));
-
-            if (sortState.key) {
-                const dir = sortState.dir === 'asc' ? 1 : -1;
-                entries.sort(([, ra], [, rb]) => {
-                    const a = sortValue(ra, sortState.key);
-                    const b = sortValue(rb, sortState.key);
-                    if (a === null && b === null) return 0;
-                    if (a === null) return 1;   // empty values always last
-                    if (b === null) return -1;
-                    return compareValues(a, b) * dir;
-                });
-            }
-
-            updateSortIndicators();
-            resultCount.textContent = total === 0 ? '' : `Showing ${entries.length} of ${total} routes`;
-
-            if (total === 0) {
-                routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes found. Click 'Add New Route' to start testing.</td></tr>`;
-                return;
-            }
-            if (entries.length === 0) {
-                routesTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">No routes match the current filters.</td></tr>`;
-                return;
-            }
-
-            entries.forEach(([key, route]) => {
-                const tr = document.createElement('tr');
-
-                tr.innerHTML = `
-                    <td><strong>${escapeHtml(route.walkID || '')}</strong></td>
-                    <td>${escapeHtml(route.Route_Name || '')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#eee;">${escapeHtml(route.Grade || 'E')}</span></td>
-                    <td>${escapeHtml(route.Distance || '')}</td>
-                    <td>${escapeHtml(route.Ascent || '-')}</td>
-                    <td><span style="font-size:0.8rem; padding:2px 6px; border-radius:3px; background:#e0f7fa;">${escapeHtml(route.Terrain || 'A')}</span></td>
-                    <td>${escapeHtml(route.Scr || '0')}</td>
-                    <td>${escapeHtml(route.Total_Time || '')}</td>
-                    <td>${escapeHtml(route.Leader || '')}</td>
-                    <td title="${escapeHtml(route.Route_Description || '')}">${escapeHtml(truncateText(route.Route_Description || '-', 20))}</td>
-                    <td title="${escapeHtml(route.Directions || '')}">${escapeHtml(truncateText(route.Directions || '-', 20))}</td>
-                    <td class="actions-cell admin-only">
-                        <button class="btn edit-btn" data-id="${escapeHtml(key)}">Edit</button>
-                        <button class="btn btn-danger delete-btn" data-id="${escapeHtml(key)}">Delete</button>
-                    </td>
-                `;
-                routesTableBody.appendChild(tr);
-            });
-
-            attachRowEventListeners();
-        }
-
-        // Header click: ascending -> descending -> original order
-        function cycleSort(key) {
-            if (sortState.key !== key) {
-                sortState.key = key;
-                sortState.dir = 'asc';
-            } else if (sortState.dir === 'asc') {
-                sortState.dir = 'desc';
-            } else {
-                sortState.key = null;
-                sortState.dir = 'asc';
-            }
-            renderView();
-        }
-
-        sortHeaders.forEach(th => {
-            th.addEventListener('click', () => cycleSort(th.dataset.sort));
-            th.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    cycleSort(th.dataset.sort);
-                }
-            });
+    try {
+      const walksApp = initializeApp(walksConfig, "walksDatabase");
+      walksDb = getDatabase(walksApp);
+      const auth = getAuth(walksApp);
+      let bookingsReady = Promise.resolve();
+      try {
+        const bookingsApp = initializeApp(bookingsConfig, "walksBookingsRead");
+        bookingsDb = getDatabase(bookingsApp);
+        bookingsReady = signInAnonymously(getAuth(bookingsApp)).catch((err) => console.error("Bookings sign-in failed:", err));
+      } catch (err) {
+        console.error("Bookings connection failed.", err);
+      }
+      signInAnonymously(auth)
+        .then(() => bookingsReady)
+        .then(start)
+        .catch((err) => {
+          console.error("Anonymous sign-in failed:", err);
+          start();
         });
-
-        Object.values(filterEls).forEach(el => {
-            el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderView);
-        });
-
-        clearFiltersBtn.addEventListener('click', () => {
-            Object.values(filterEls).forEach(el => { el.value = ''; });
-            renderView();
-        });
-
-        addRouteBtn.addEventListener('click', () => {
-            if (!isAdmin) return;
-            routeForm.reset();
-            routeIdInput.value = '';
-            modalTitle.textContent = 'Create New Walking Profile';
-            routeModal.style.display = 'flex';
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            routeModal.style.display = 'none';
-        });
-
-        routeForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!isAdmin) return;
-            const id = routeIdInput.value;
-            const routeData = {};
-            fields.forEach(f => {
-                routeData[f] = elements[f].value;
-            });
-
-            const action = id ? dbService.update(id, routeData) : dbService.create(routeData);
-            
-            action
-                .then(() => routeModal.style.display = 'none')
-                .catch((err) => console.error("Database operation failed:", err));
-        });
-
-        function attachRowEventListeners() {
-            document.querySelectorAll('.edit-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    if (!isAdmin) return;
-                    const id = e.target.getAttribute('data-id');
-                    const route = localRoutesData[id];
-                     
-                    if (route) {
-                        routeIdInput.value = id;
-                            fields.forEach(f => {
-                            elements[f].value = route[f] || '';
-                        });
-                        modalTitle.textContent = `Edit Profile: ${route.Route_Name}`;
-                        routeModal.style.display = 'flex';
-                    }
-                });
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    if (!isAdmin) return;
-                    const id = e.target.getAttribute('data-id');
-                    if (confirm('Are you sure you want to delete this route profile?')) {
-                        dbService.delete(id).catch((err) => console.error("Deletion failed:", err));
-                    }
-                });
-            });
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
-        function truncateText(str, maxLen) {
-            if (str.length <= maxLen) return str;
-            return str.substr(0, maxLen) + '...';
-        }
-
-        // ---------- General / Admin view toggle ----------
-        const generalViewBtn = document.getElementById('generalViewBtn');
-        const adminViewBtn = document.getElementById('adminViewBtn');
-
-        function setMode(admin) {
-            isAdmin = admin;
-            document.body.classList.toggle('admin-mode', admin);
-            generalViewBtn.classList.toggle('active', !admin);
-            adminViewBtn.classList.toggle('active', admin);
-            generalViewBtn.setAttribute('aria-pressed', String(!admin));
-            adminViewBtn.setAttribute('aria-pressed', String(admin));
-            if (!admin) routeModal.style.display = 'none';
-        }
-
-        generalViewBtn.addEventListener('click', () => setMode(false));
-        adminViewBtn.addEventListener('click', () => setMode(true));
-        setMode(false); // always start in General view
-
-        initApp();
-    </script>
+    } catch (err) {
+      console.error("Walks Firebase startup failed.", err);
+      start();
+    }
+  </script>
 </body>
+
 </html>
