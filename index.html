@@ -26,21 +26,6 @@
       --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
       --shadow-float: 0 16px 32px -8px rgba(15, 23, 42, 0.25);
     }
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --border: #334155;
-        --text: #e2e8f0;
-        --text-muted: #94a3b8;
-        --bg-muted: #1e293b;
-      }
-    }
-    :root[data-theme="dark"] {
-      --border: #334155;
-      --text: #e2e8f0;
-      --text-muted: #94a3b8;
-      --bg-muted: #1e293b;
-    }
-
     * { box-sizing: border-box; }
 
     body {
@@ -373,6 +358,8 @@
       { key: "X", label: "X" },
       { key: "walkID", label: "walkID (legacy numeric ID)" },
     ];
+    // Leader view (details and change requests) does not show the last walked / last offered history
+    const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
     // The walk key is the database key, e.g. walk_025. Bookings store it as walk_number.
     const ID_FIELD = { key: "walk_key", label: "Walk key", required: true, hint: "e.g. walk_610. Bookings use this as walk number." };
     const LABELS = Object.fromEntries([ID_FIELD, ...EDITABLE_FIELDS].map((f) => [f.key, f.label]));
@@ -450,7 +437,12 @@
           <div class="detail-value">${shown}</div>
         </div>`;
       };
-      return `<div class="detail-grid">${EDITABLE_FIELDS.map(cell).join("")}</div>`;
+      // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
+      const WALKER_HIDDEN = ["Leader", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
+        "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
+      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
+      const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
+      return `<div class="detail-grid">${fields.map(cell).join("")}</div>`;
     }
 
     function renderTable() {
@@ -615,7 +607,7 @@
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
         submit.textContent = "Send request";
-        fields = EDITABLE_FIELDS;
+        fields = EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key));
       }
 
       document.getElementById("form-fields").innerHTML = fields.map((f) => {
@@ -698,6 +690,7 @@
           const changes = {};
           const before = {};
           for (const f of EDITABLE_FIELDS) {
+            if (LEADER_HIDDEN_FIELDS.includes(f.key)) continue;   // not on the leader's form
             const was = str(current[f.key]);
             if (record[f.key] !== was) {
               changes[f.key] = record[f.key];
