@@ -1,871 +1,436 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Walks Database</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --primary: #2d5b3e;
-      --primary-hover: #234a31;
-      --bg-muted: #f8fafc;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --amber-bg: #fef3c7;
-      --amber-text: #92400e;
-      --green-bg: #dcfce7;
-      --green-text: #166534;
-      --red: #b91c1c;
-      --radius-panel: 14px;
-      --radius-card: 10px;
-      --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-      --shadow-float: 0 16px 32px -8px rgba(15, 23, 42, 0.25);
+<!-- CBMW This Week's Walks: paste the whole file into one WordPress "Custom HTML" block.
+     Place it on the Walkers Hub page: the link opens the programme inside the hub, like the Walk Programme card. -->
+<style>
+    /* Isolate from the WordPress theme: reset the properties themes most often override */
+    #wk-root, #wk-root *, #wk-root *::before, #wk-root *::after,
+    #wk-modal, #wk-modal *, #wk-levels, #wk-levels * {
+        box-sizing: border-box !important;
+        font-family: "Google Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
+        letter-spacing: normal !important;
+        word-spacing: normal !important;
+        text-indent: 0 !important;
+        text-transform: none !important;
+        font-style: normal !important;
+        text-shadow: none !important;
+        line-height: 1.4 !important;
+        float: none !important;
     }
-    * { box-sizing: border-box; }
-
-    body {
-      font-family: "Google Sans", system-ui, -apple-system, sans-serif;
-      background: #f6f5f0;
-      color: var(--text);
-      margin: 0;
-      padding: 20px 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    #wk-root h2, #wk-root h3, #wk-root p, #wk-root ul, #wk-root li, #wk-root figure,
+    #wk-modal h3, #wk-modal p { margin: 0 !important; padding: 0 !important; }
+    #wk-root a, #wk-modal a { color: #2d5b3e !important; text-decoration: underline !important; background: none !important; }
+    #wk-root button, #wk-modal button {
+        appearance: none !important; -webkit-appearance: none !important; border-radius: 12px !important;
+        margin: 0 !important; min-height: 0 !important; min-width: 0 !important; width: auto !important; height: auto !important;
+        max-width: none !important; background: #fff !important; border-style: solid !important; border-width: 1px !important;
+        border-color: #e4e4e7 !important; color: #1e293b !important; font-weight: normal !important;
     }
+    #wk-root svg { display: block; max-width: none !important; height: auto; }
+    #wk-root img { max-width: none !important; }
 
-    .page { width: 100%; max-width: 1200px; }
-    .page-header { text-align: center; margin-bottom: 24px; }
-    .page-header h1 { margin: 0 0 6px; font-size: 1.8rem; color: var(--primary); }
-    .page-header p { margin: 0; color: var(--text-muted); }
-
-    .panel {
-      background: #fff;
-      border-radius: var(--radius-panel);
-      box-shadow: var(--shadow-panel);
-      padding: 20px;
+    #wk-root {
+        --primary: #2d5b3e;
+        --primary-hover: #234a31;
+        --border: #e4e4e7;
+        --text: #1e293b;
+        --text-muted: #64748b;
+        color: var(--text) !important;
+        max-width: 880px !important;
+        margin: 0 auto !important;
+        padding: 0 4px !important;
+        width: 100% !important;
+        font-size: 16px !important;
+        text-align: left !important;
     }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
+    #wk-root .wk-head { display: flex !important; flex-wrap: wrap !important; align-items: baseline !important; justify-content: space-between !important; gap: 6px 16px !important; margin: 0 0 14px !important; }
+    #wk-root .wk-head h2 { font-size: 1.5rem !important; font-weight: 700 !important; color: var(--primary) !important; }
+    #wk-root .wk-range { color: var(--text-muted) !important; font-weight: 600 !important; font-size: 0.95rem !important; }
+    #wk-root .wk-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 14px !important; }
+    /* Card: image, title, description, meta row and a footer with a button (matches the listing style) */
+    #wk-root .wk-card {
+        display: flex !important; flex-direction: column !important; padding: 0 !important; overflow: hidden !important;
+        background: #fff !important; border: 1px solid #cfd8e3 !important; border-radius: 6px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+        cursor: pointer !important; text-align: left !important; color: inherit !important; font: inherit !important;
+        transition: box-shadow 0.15s !important;
     }
-    .toolbar-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .toolbar input[type="search"], .toolbar select {
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font: inherit;
-      min-width: 200px;
+    #wk-root .wk-card:hover { box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.28) !important; }
+    #wk-root .wk-card:focus-visible { outline: 2px solid var(--primary) !important; outline-offset: 3px !important; }
+    #wk-root .wk-img { position: relative !important; height: 170px !important; flex: none !important; background: linear-gradient(135deg, #d9e7dd, #b7d5bf) !important; }
+    #wk-root .wk-img svg { position: absolute !important; inset: 0 !important; margin: auto !important; width: 60px !important; height: 60px !important; opacity: 0.5 !important; }
+    #wk-root .wk-card.wk-summer .wk-img { background: linear-gradient(135deg, #fef3c7, #fde68a) !important; }
+    #wk-root .wk-tag { position: absolute !important; top: 10px !important; left: 10px !important; background: #fffbeb !important; color: #713f12 !important; border-left: 5px solid #eab308 !important; font-size: 0.72rem !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 4px !important; }
+    #wk-root .wk-body { padding: 14px 16px 12px !important; flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; gap: 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
+    #wk-root .wk-title { font-weight: 700 !important; font-size: 1.05rem !important; line-height: 1.3 !important; color: #1e293b !important; }
+    #wk-root .wk-desc { font-size: 0.9rem !important; line-height: 1.45 !important; color: #334155 !important; display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+    #wk-root .wk-desc strong { font-weight: 700 !important; color: #1e293b !important; }
+    #wk-root .wk-meta { margin-top: auto !important; padding-top: 4px !important; font-size: 0.82rem !important; color: #64748b !important; font-weight: 600 !important; }
+    #wk-root .wk-foot-row { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; padding: 12px 16px !important; }
+    #wk-root .wk-lbl { display: block !important; font-size: 0.72rem !important; font-weight: 700 !important; color: #475569 !important; margin: 0 0 2px !important; }
+    #wk-root .wk-val { display: block !important; font-size: 0.85rem !important; font-weight: 600 !important; color: #1e293b !important; }
+    #wk-root .wk-btn { flex: none !important; background: #2d5b3e !important; color: #fff !important; border-radius: 4px !important; padding: 10px 16px !important; font-size: 0.82rem !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.03em !important; }
+    #wk-root .wk-facts { margin-top: auto !important; padding-top: 6px !important; }
+    #wk-root .wk-fact { margin: 0 !important; font-size: 0.85rem !important; line-height: 1.5 !important; color: #334155 !important; }
+    #wk-root .wk-fact strong { font-weight: 700 !important; color: #1e293b !important; }
+    #wk-root .wk-when-line { font-size: 0.85rem !important; font-weight: 600 !important; color: #334155 !important; }
+    #wk-root .wk-card:hover .wk-btn { background: #234a31 !important; }
+    #wk-root .wk-status { color: var(--text-muted) !important; margin: 0 !important; }
+    #wk-root .wk-foot { margin-top: 14px !important; text-align: center !important; }
+    #wk-root .wk-link { color: var(--primary) !important; font-weight: 600 !important; font-size: 0.85rem !important; text-decoration: underline !important; text-underline-offset: 3px !important; }
+    #wk-root .wk-link:hover { color: var(--primary-hover) !important; }
+
+    /* Walk popup: matches the walker card in the scheduler (moved to <body> on load) */
+    #wk-modal { position: fixed !important; inset: 0 !important; background: rgba(15, 23, 42, 0.45) !important; display: none !important; align-items: center !important; justify-content: center !important; padding: 16px !important; z-index: 2147483000 !important; margin: 0 !important; }
+    #wk-modal.open { display: flex !important; }
+    #wk-modal .wk-dialog { background: #fff !important; color: #1f2937 !important; border-radius: 12px !important; width: min(600px, 100%) !important; max-height: 90vh !important; overflow-y: auto !important; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.3) !important; position: relative !important; text-align: left !important; font-size: 16px !important; padding: 0 !important; }
+    #wk-modal .wk-pop-head { background: #2d5b3e !important; color: #fff !important; padding: 22px 24px !important; position: sticky !important; top: 0 !important; z-index: 1 !important; }
+    #wk-modal .wk-pop-head h3 { font-size: 1.25rem !important; font-weight: 700 !important; color: #fff !important; line-height: 1.25 !important; padding-right: 32px !important; margin: 0 0 10px !important; }
+    #wk-modal .wk-pop-date { font-size: 1.05rem !important; font-weight: 600 !important; color: #fff !important; margin: 0 !important; }
+    #wk-modal .wk-close { position: absolute !important; top: 14px !important; right: 16px !important; background: none !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; color: #fff !important; font-size: 1.6rem !important; line-height: 1 !important; padding: 0 4px !important; cursor: pointer !important; }
+    #wk-modal .wk-pop-body { padding: 20px 24px 24px !important; }
+    #wk-modal .wk-stats { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 10px !important; margin: 0 0 18px !important; }
+    #wk-modal .wk-stat { background: #e8f1eb !important; border-radius: 12px !important; padding: 12px 14px !important; min-width: 0 !important; }
+    #wk-modal .wk-stat-label { font-size: 0.7rem !important; letter-spacing: 0.06em !important; text-transform: uppercase !important; color: #2d5b3e !important; font-weight: 600 !important; line-height: 1.3 !important; }
+    #wk-modal .wk-stat-value { font-size: 1rem !important; font-weight: 700 !important; margin-top: 4px !important; color: #1e293b !important; word-break: break-word !important; }
+    #wk-modal .wk-quote { margin: 0 0 18px !important; padding: 4px 14px !important; border-left: 4px solid #d97706 !important; color: #374151 !important; font-size: 0.98rem !important; line-height: 1.5 !important; white-space: pre-wrap !important; font-weight: normal !important; }
+    #wk-modal .wk-quote-break { display: block !important; height: 8px !important; }
+    #wk-modal .wk-section { font-size: 0.78rem !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; color: #4b5563 !important; border-bottom: 1px solid #e5e7eb !important; padding-bottom: 6px !important; margin: 18px 0 10px !important; font-weight: 500 !important; }
+    #wk-modal .wk-section:first-child { margin-top: 0 !important; }
+    #wk-modal .wk-row { display: grid !important; grid-template-columns: 110px 1fr !important; gap: 8px !important; padding: 6px 0 !important; font-size: 0.95rem !important; color: #1f2937 !important; }
+    #wk-modal .wk-row-label { color: #4b5563 !important; font-weight: 500 !important; }
+    #wk-modal .wk-row-value { word-break: break-word !important; font-weight: normal !important; }
+    #wk-modal .wk-pill { display: inline-block !important; padding: 1px 8px !important; border-radius: 999px !important; background: #dcfce7 !important; color: #166534 !important; font-weight: 600 !important; font-size: 0.8rem !important; margin-left: 6px !important; }
+    #wk-modal .wk-dirs { background: #f3f4f6 !important; border-radius: 10px !important; padding: 14px 16px !important; color: #4b5563 !important; font-size: 0.95rem !important; line-height: 1.5 !important; white-space: pre-wrap !important; }
+    #wk-modal .wk-dogs { margin-top: 14px !important; font-size: 0.9rem !important; color: #4b5563 !important; }
+    #wk-modal a { color: #2d5b3e !important; text-decoration: underline !important; font-weight: 600 !important; }
+
+    #wk-modal .wk-levels-link { display: inline-block !important; background: none !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; padding: 4px 0 !important; margin: -6px 0 12px !important; font-size: 0.85rem !important; font-weight: 600 !important; color: #2d5b3e !important; text-decoration: underline !important; cursor: pointer !important; }
+    #wk-levels { position: fixed !important; inset: 0 !important; background: rgba(15, 23, 42, 0.45) !important; display: none !important; align-items: center !important; justify-content: center !important; padding: 16px !important; z-index: 2147483100 !important; margin: 0 !important; }
+    #wk-levels.open { display: flex !important; }
+    #wk-levels .wk-levels-box { background: #fff !important; color: #1f2937 !important; border-radius: 12px !important; width: min(680px, 100%) !important; max-height: 85vh !important; overflow-y: auto !important; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25) !important; position: relative !important; padding: 22px 26px !important; font-size: 0.92rem !important; line-height: 1.55 !important; text-align: left !important; }
+    #wk-levels h2 { font-size: 1.15rem !important; font-weight: 700 !important; margin: 0 0 12px !important; color: #1e293b !important; padding-right: 90px !important; }
+    #wk-levels h3 { font-size: 0.95rem !important; font-weight: 700 !important; margin: 16px 0 6px !important; text-decoration: underline !important; color: #1e293b !important; }
+    #wk-levels p { margin: 0 0 8px !important; color: #1f2937 !important; font-size: 0.92rem !important; }
+    #wk-levels .wk-levels-close { position: absolute !important; top: 16px !important; right: 18px !important; background: #fff !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; padding: 6px 12px !important; font-size: 0.85rem !important; font-weight: 600 !important; color: #1e293b !important; cursor: pointer !important; }
+
+    @media (max-width: 560px) {
+        #wk-root .wk-head h2 { font-size: 1.3rem !important; }
+        #wk-root .wk-grid { grid-template-columns: 1fr !important; }
+        #wk-modal .wk-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     }
+</style>
 
-    .btn {
-      padding: 8px 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #fff;
-      color: var(--text);
-      font: inherit;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn:hover { background: #f1f5f9; }
-    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-danger { color: var(--red); border-color: #fca5a5; }
-    .btn-small { padding: 4px 10px; font-size: 0.85rem; }
-
-    .card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-card);
-      padding: 14px 16px;
-      margin-bottom: 16px;
-      background: var(--bg-muted);
-    }
-    .card h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--primary); }
-    .request-item { padding: 10px 0; border-top: 1px solid var(--border); }
-    .request-item:first-of-type { border-top: none; }
-    .request-item .who { font-weight: 600; }
-    .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
-    .change-list { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
-    .change-list li { margin-bottom: 2px; }
-    .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .table-wrap { overflow-x: auto; }
-    .walks-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-    .walks-table th, .walks-table td {
-      text-align: left;
-      padding: 10px 8px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    .walks-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
-    .walks-table tbody tr.walk-row { cursor: pointer; }
-    .walks-table tbody tr.walk-row:hover > td { background: #f5faf6; }
-    .walks-table tr.is-open > td { background: #f0f9f3; }
-    .walks-table .chev-cell { width: 42px; }
-    .chev {
-      width: 30px; height: 30px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #fff;
-      color: var(--primary);
-      cursor: pointer;
-      padding: 0;
-    }
-    .chev svg { display: block; margin: auto; }
-    .chev .chev-up { display: none; }
-    .chev[aria-expanded="true"] .chev-up { display: block; }
-    .chev[aria-expanded="true"] .chev-down { display: none; }
-    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .walk-id { font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap; }
-    .muted { color: var(--text-muted); }
-    .actions-cell { white-space: nowrap; }
-
-    .details-row > td { padding: 14px 16px 18px 20px; box-shadow: inset 4px 0 0 var(--primary); }
-    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
-    .detail-grid .wide { grid-column: 1 / -1; }
-    .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-    .detail-value { white-space: pre-line; word-break: break-word; }
-    .detail-value a { color: var(--primary); }
-
-    .pill {
-      display: inline-block;
-      padding: 1px 8px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-    .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
-    .pill-approved { background: var(--green-bg); color: var(--green-text); }
-    .pill-rejected { background: #fee2e2; color: var(--red); }
-    .grade { font-weight: 700; }
-
-    .empty { text-align: center; color: var(--text-muted); padding: 24px 0; }
-
-    /* Dialog */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 50;
-    }
-    .modal[hidden] { display: none; }
-    .modal-card {
-      background: #fff;
-      color: var(--text);
-      border-radius: var(--radius-panel);
-      box-shadow: var(--shadow-float);
-      padding: 22px;
-      width: 100%;
-      max-width: 720px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .modal-card h2 { margin: 0 0 4px; color: var(--primary); }
-    .modal-card .lede { margin: 0 0 16px; color: var(--text-muted); font-size: 0.9rem; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
-    .form-grid .full { grid-column: 1 / -1; }
-    .form-field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
-    .form-field input, .form-field select, .form-field textarea {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font: inherit;
-      background: #fff;
-      color: var(--text);
-    }
-    .form-field textarea { min-height: 80px; resize: vertical; }
-    .form-field input:disabled { background: #f1f5f9; color: var(--text-muted); }
-    .form-field .hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
-    .form-error { margin: 12px 0 0; color: var(--red); font-size: 0.9rem; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-
-    @media (max-width: 640px) {
-      .form-grid, .detail-grid { grid-template-columns: 1fr; }
-      .toolbar input[type="search"], .toolbar select { min-width: 0; width: 100%; }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="page">
-    <header class="page-header">
-      <h1 id="page-title">Walks Database</h1>
-      <p id="page-subtitle"></p>
-    </header>
-
-    <main class="panel">
-      <div class="toolbar">
-        <div class="toolbar-group">
-          <input type="search" id="search" placeholder="Search walk ID, route, pueblo or grade" aria-label="Search walks" />
-          <select id="grade-filter" aria-label="Filter by grade">
-            <option value="">All grades</option>
-            <option value="E">E</option>
-            <option value="M">M</option>
-            <option value="MS">MS</option>
-            <option value="S">S</option>
-            <option value="VS">VS</option>
-          </select>
-          <div id="picker-wrap" class="toolbar-group" hidden>
-            <label for="leader-picker" class="muted">Requesting as</label>
-            <select id="leader-picker" aria-label="Choose your leader ID"></select>
-          </div>
-        </div>
-        <div class="toolbar-group">
-          <button type="button" class="btn btn-primary" id="add-walk" hidden>+ Add walk</button>
-        </div>
-      </div>
-
-      <section class="card" id="pending-panel" hidden>
-        <h2>Change requests waiting for approval <span class="muted" id="pending-count"></span></h2>
-        <div id="pending-list"></div>
-      </section>
-
-      <section class="card" id="my-requests-panel" hidden>
-        <h2>My change requests</h2>
-        <div id="my-requests-list"></div>
-      </section>
-
-      <div class="table-wrap">
-        <table class="walks-table">
-          <thead>
-            <tr>
-              <th class="chev-cell"><span class="sr-only">Details</span></th>
-              <th>Walk ID</th>
-              <th>Route</th>
-              <th>Pueblo</th>
-              <th>Grade</th>
-              <th>Distance</th>
-              <th>Ascent</th>
-              <th>Total time</th>
-              <th id="actions-head" hidden>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="walks-body"></tbody>
-        </table>
-      </div>
-      <p class="empty" id="empty-note" hidden>No walks match the current filters.</p>
-    </main>
+<div id="wk-root">
+  <div class="wk-head">
+    <h2>This week's walks</h2>
+    <p class="wk-range" id="wk-range"></p>
   </div>
-
-  <!-- Add / edit / request-change dialog -->
-  <div class="modal" id="walk-modal" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title"></h2>
-      <p class="lede" id="modal-lede"></p>
-      <form id="walk-form" novalidate>
-        <div class="form-grid" id="form-fields"></div>
-        <p class="form-error" id="form-error" hidden></p>
-        <div class="modal-actions">
-          <button type="button" class="btn" id="modal-cancel">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="modal-submit">Save</button>
-        </div>
-      </form>
-    </div>
+  <div class="wk-grid" id="wk-grid"><p class="wk-status">Loading this week's walks…</p></div>
+  <div class="wk-foot">
+    <a class="wk-link" href="https://magicstreak.github.io/CBMW-walk-scheduler/?view=walker" target="_blank" rel="noopener noreferrer">Open the full walk programme &rarr;</a>
   </div>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+<div class="wk-modal" id="wk-modal" role="dialog" aria-modal="true" aria-labelledby="wk-modal-title" style="display:none">
+  <div class="wk-dialog" id="wk-dialog"></div>
+</div>
 
-    /* ========================================================= SETUP ========================================================= */
-    // Walks live in the programme-planning project (same as the Walk Scheduler's master walks).
-    // Change requests are stored beside them in walk_requests. Walk bookings (calendar project) are read only, for delete checks.
-    const walksConfig = {
-      apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
-      authDomain: "programme-planning.firebaseapp.com",
-      databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "programme-planning",
-      storageBucket: "programme-planning.firebasestorage.app",
-      messagingSenderId: "1028011310189",
-      appId: "1:1028011310189:web:8ac4f37a8d248899735364",
-      measurementId: "G-BBQ4Q6TQHD"
-    };
-    const bookingsConfig = {
-      apiKey: "AIzaSyC0hEmdWHSlBkdnxrQiNt_RITYsbj3wvi0",
-      authDomain: "cbmw-walk-scheduler.firebaseapp.com",
-      databaseURL: "https://cbmw-walk-scheduler-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "cbmw-walk-scheduler",
-      storageBucket: "cbmw-walk-scheduler.firebasestorage.app",
-      messagingSenderId: "108766389213",
-      appId: "1:108766389213:web:cded7ada3d32874b380c34",
-      measurementId: "G-QFS6HHL007"
-    };
+<div id="wk-levels" role="dialog" aria-modal="true" aria-labelledby="wk-levels-title">
+  <div class="wk-levels-box">
+    <button type="button" class="wk-levels-close" data-close-levels>Close</button>
+    <h2 id="wk-levels-title">Walk Levels</h2>
+    <p><strong>E - Easy:</strong> A walk of up to 4½ hours on good surfaced tracks and less than 200 metres total ascent.</p>
+    <p><strong>M - Moderate:</strong> up to 12km, less than 400 metres total ascent and less than 50% rough going.</p>
+    <p><strong>MS - Moderately Strenuous:</strong> Up to 600 metres total ascent and/or no more than 15 km with some rough going taken at a reasonable pace.</p>
+    <p><strong>S - Strenuous:</strong> More than 600 metres total ascent and/or more than 15km with steep, loose or heavily vegetated sections.</p>
+    <p><strong>VS - Very Strenuous:</strong> More than 800 metres total ascent and/or more than 20km with steep, loose or heavily vegetated sections.</p>
+    <p><strong>X - Experienced walkers routes:</strong> Routes which require considerable stamina and/or significant scrambling skills on rough, steep or exposed sections.</p>
+    <p><strong>Scr - Scrambling:</strong> This implies the need for handholds to ascend steep rock pitches with a sense of exposure to vertigo and where a slip could lead to a serious accident.</p>
+    <p><strong>Scr0</strong> Very easy scrambling. Short sections requiring the use of handholds on not very steep or sustained sections. No exposure.</p>
+    <p><strong>Scr1</strong> Easy scrambling, requiring the use of handholds on not very steep or sustained sections. No exposure.</p>
+    <p><strong>Scr2</strong> Scrambling with some technical moves over steep and more continuous sections. With the probability of some exposure.</p>
+    <p><strong>Scr3</strong> Technically difficult scrambling. Sometimes over prolonged sections, possibly very exposed and with steep drops to one or both sides. Not easy to reverse down or escape from.</p>
+    <h3>Terrain</h3>
+    <p><strong>A</strong> - All good tracks</p>
+    <p><strong>B</strong> - Less than half the route on rough ground</p>
+    <p><strong>C</strong> - More than half the route on rough ground or routes with difficult steep awkward/rocky sections.</p>
+  </div>
+</div>
 
-    // View comes from the hosting page: ?view=walker | leader | admin (default walker).
-    // Leader view also takes ?leader_id=101 so requests are attributed to that leader; otherwise the leader picks an ID.
-    const params = new URLSearchParams(window.location.search);
-    const VIEW = (() => {
-      const v = params.get("view") || window.WALKS_VIEW || "walker";
-      return ["walker", "leader", "admin"].includes(v) ? v : "walker";
-    })();
-    const isAdmin = VIEW === "admin";
-    const isLeader = VIEW === "leader";
-    let myLeaderId = isLeader ? (params.get("leader_id") || "") : "";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    let walksDb = null;
-    let bookingsDb = null;
-    let walks = [];            // sorted by Walk ID
-    let requests = {};         // walk_requests/{id}
-    let bookings = {};         // walk_bookings (read only)
-    let leaders = [];          // leaders (read only, for the requester picker and names)
-    const expandedWalks = new Set();
+  // Same published databases as the walk scheduler (client config is public)
+  const calendarConfig = {
+    apiKey: "AIzaSyC0hEmdWHSlBkdnxrQiNt_RITYsbj3wvi0",
+    authDomain: "cbmw-walk-scheduler.firebaseapp.com",
+    databaseURL: "https://cbmw-walk-scheduler-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "cbmw-walk-scheduler",
+    storageBucket: "cbmw-walk-scheduler.firebasestorage.app",
+    messagingSenderId: "108766389213",
+    appId: "1:108766389213:web:cded7ada3d32874b380c34"
+  };
+  const walksConfig = {
+    apiKey: "AIzaSyB9WLJSl4QmubgBW5rknmnMeHcNbkwqOHQ",
+    authDomain: "programme-planning.firebaseapp.com",
+    databaseURL: "https://programme-planning-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "programme-planning",
+    storageBucket: "programme-planning.firebasestorage.app",
+    messagingSenderId: "1028011310189",
+    appId: "1:1028011310189:web:8ac4f37a8d248899735364"
+  };
 
-    /* ========================================================= FIELDS ========================================================= */
-    const GRADES = ["E", "M", "MS", "S", "VS"];
-    // Every attribute found on walks records in the programme-planning export. All are editable.
-    // Field names match the database exactly (note WiS_URL, not WIS_URL).
-    const EDITABLE_FIELDS = [
-      { key: "Route_Name", label: "Route name", required: true },
-      { key: "Pueblo", label: "Pueblo" },
-      { key: "Grade", label: "Grade", type: "choice", options: GRADES },
-      { key: "Leader", label: "Leader", type: "choice", source: "leaders" },
-      { key: "Start_Time", label: "Start time" },
-      { key: "Distance", label: "Distance" },
-      { key: "Ascent", label: "Ascent" },
-      { key: "Total_Time", label: "Total time" },
-      { key: "Terrain", label: "Terrain" },
-      { key: "Scr", label: "SCR", type: "choice", source: "walks" },
-      { key: "Dogs", label: "Dogs" },
-      { key: "Restrictions", label: "Restrictions", type: "textarea", full: true },
-      { key: "Latitude", label: "Latitude" },
-      { key: "Longitude", label: "Longitude" },
-      { key: "WiS_URL", label: "WiS URL", type: "url", full: true },
-      { key: "WiS_Bitly_Link", label: "WiS short link", type: "url" },
-      { key: "KomootBitly", label: "Komoot link", type: "url" },
-      { key: "Route_Description", label: "Route description", type: "textarea", full: true },
-      { key: "Directions", label: "Driving directions", type: "textarea", full: true },
-      { key: "Lunch_or_Break_Notes", label: "Lunch or break notes", type: "textarea", full: true },
-      { key: "Reservation_Notes", label: "Reservation notes", type: "textarea", full: true },
-      { key: "Season_last_walked_or_offered", label: "Season last walked or offered" },
-      { key: "Last_offered_or_led_by", label: "Last offered or led by" },
-      { key: "X", label: "X" },
-      { key: "walkID", label: "walkID (legacy numeric ID)" },
-    ];
-    // Leader view (details and change requests) does not show the last walked / last offered history
-    const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
-    // The walk key is the database key, e.g. walk_025. Bookings store it as walk_number.
-    const ID_FIELD = { key: "walk_key", label: "Walk key", required: true, hint: "e.g. walk_610. Bookings use this as walk number." };
-    const LABELS = Object.fromEntries([ID_FIELD, ...EDITABLE_FIELDS].map((f) => [f.key, f.label]));
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const OVERRIDE_FIELDS = ["Distance", "Ascent", "Total_Time", "Terrain", "Scr", "Dogs", "Latitude", "Longitude", "Route_Description", "Directions"];
 
-    /* ========================================================= HELPERS ========================================================= */
-    function escapeHtml(value) {
-      return String(value ?? "").replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-      }[c]));
-    }
-    const str = (v) => String(v ?? "").trim();
-    const walkById = (id) => walks.find((w) => w.id === id) || null;
-    const pendingFor = (id) => Object.values(requests).filter((r) => r && r.status === "pending" && r.walk_id === id);
-    const pendingRequests = () => Object.values(requests).filter((r) => r && r.status === "pending")
-      .sort((a, b) => String(a.requested_at).localeCompare(String(b.requested_at)));
-    const fullName = (l) => `${str(l?.first_name)} ${str(l?.surname)}`.trim();
-    const leaderName = (id) => {
-      const l = leaders.find((x) => x.leader_id === id);
-      return l ? `${l.first_name || ""} ${l.surname || ""}`.trim() : "";
-    };
-    const sortById = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
+  let bookings = {}, socials = {}, masters = {}, leaders = {}, loaded = false;
+  let items = [];
 
-    function nextWalkId() {
-      const nums = walks.map((w) => { const m = w.id.match(/^walk_(\d{3})$/); return m ? Number(m[1]) : 0; });
-      return `walk_${String(Math.max(0, ...nums) + 1).padStart(3, "0")}`;
-    }
+  const pad = (n) => String(n).padStart(2, "0");
+  // Booking dates are DD-MM-YYYY
+  const dmy = (d) => `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+  const isoOf = (dmyStr) => { const p = String(dmyStr || "").split("-"); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : ""; };
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const clean = (v) => String(v ?? "").trim();
+  const dash = (v) => (clean(v) ? esc(clean(v)) : "–");
 
-    // Walk bookings that point at this walk (by walk number or ID)
-    function bookingCountFor(id) {
-      return Object.values(bookings).filter(Boolean).filter((b) =>
-        String(b.walk_number ?? "") === id || String(b.walk_id ?? "") === id
-      ).length;
-    }
+  function weekDays() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+  }
 
-    function formatDate(iso) {
-      const d = new Date(iso);
-      return isNaN(d) ? "" : d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    }
-    const statusLabel = (s) => ({ pending: "Waiting for approval", approved: "Approved", rejected: "Not approved" }[s] || s);
+  // The walk database record for a booking's Walk ID, tolerant of ID formats
+  function masterFor(walkNumber) {
+    const key = clean(walkNumber);
+    if (!key) return null;
+    if (masters[key]) return masters[key];
+    const hit = Object.entries(masters).find(([id, w]) => clean(id) === key || clean(w?.Walk_ID ?? w?.walkid ?? w?.Walk_Number) === key);
+    return hit ? hit[1] : null;
+  }
 
-    // Blank optional values are stored as null so Firebase removes them
-    const toStored = (v) => String(v ?? "");
+  // Walk route as the scheduler merges it: database values, with any booking overrides on top
+  function routeFor(record) {
+    const master = masterFor(record.walk_number || record.walk_id) || {};
+    const ov = record.overrides || {};
+    const merged = { ...master };
+    OVERRIDE_FIELDS.forEach((k) => { if (clean(ov[k])) merged[k] = ov[k]; });
+    return merged;
+  }
 
-    /* ========================================================= RENDER ========================================================= */
-    function setupPage() {
-      const titles = {
-        walker: ["Walks Database", "Read-only list of walk routes."],
-        leader: ["Walks Database", "Browse the walks. You can request a change to any walk; an admin approves it first."],
-        admin: ["Walks Database", "Add, edit or remove walks, and approve or reject change requests."],
-      };
-      document.getElementById("page-title").textContent = titles[VIEW][0];
-      document.getElementById("page-subtitle").textContent = titles[VIEW][1];
-      document.getElementById("add-walk").hidden = !isAdmin;
-      document.getElementById("actions-head").hidden = VIEW === "walker";
-      document.getElementById("pending-panel").hidden = !isAdmin;
-      document.getElementById("picker-wrap").hidden = !isLeader || !!params.get("leader_id");
-    }
+  function coordsOf(route) {
+    const lat = clean(route.Latitude), lon = clean(route.Longitude);
+    if (!lat || !lon || !Number.isFinite(Number(lat)) || !Number.isFinite(Number(lon))) return null;
+    return { text: `${lat}, ${lon}`, url: `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lon)}` };
+  }
 
-    function renderPicker() {
-      if (!isLeader) return;
-      const select = document.getElementById("leader-picker");
-      select.innerHTML = `<option value="" ${myLeaderId ? "" : "selected"} disabled>Choose a leader ID</option>` +
-        leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
-    }
-
-    function detailGridHtml(walk) {
-      const cell = (f) => {
-        const value = str(walk[f.key]);
-        const shown = !value ? '<span class="muted">–</span>'
-          : f.type === "url" && /^https?:\/\//.test(value)
-            ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`
-            : escapeHtml(value);
-        return `<div class="${f.full ? "wide" : ""}">
-          <div class="detail-label">${escapeHtml(f.label)}</div>
-          <div class="detail-value">${shown}</div>
-        </div>`;
-      };
-      // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
-      const WALKER_HIDDEN = ["Leader", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
-        "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
-      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
-      const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
-      return `<div class="detail-grid">${fields.map(cell).join("")}</div>`;
-    }
-
-    function renderTable() {
-      const term = str(document.getElementById("search").value).toLowerCase();
-      const grade = document.getElementById("grade-filter").value;
-      const rows = walks.filter((w) => {
-        if (grade && str(w.Grade) !== grade) return false;
-        if (!term) return true;
-        return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
-      });
-      document.getElementById("empty-note").hidden = rows.length > 0;
-
-      const html = [];
-      for (const w of rows) {
-        const open = expandedWalks.has(w.id);
-        const waiting = pendingFor(w.id).length > 0;
-        const actions = [];
-        if (isAdmin) {
-          actions.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
-          actions.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
-        } else if (isLeader) {
-          actions.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
-        }
-
-        html.push(`<tr class="walk-row ${open ? "is-open" : ""}" data-id="${escapeHtml(w.id)}">
-          <td class="chev-cell">
-            <button type="button" class="chev" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} details for walk ${escapeHtml(w.id)}" data-action="toggle" data-id="${escapeHtml(w.id)}">
-              <svg class="chev-down" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-              <svg class="chev-up" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>
-            </button>
-          </td>
-          <td class="walk-id">${escapeHtml(w.id)}</td>
-          <td>${escapeHtml(w.Route_Name) || "–"}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
-          <td>${escapeHtml(w.Pueblo) || "–"}</td>
-          <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
-          <td>${escapeHtml(w.Distance) || "–"}</td>
-          <td>${escapeHtml(w.Ascent) || "–"}</td>
-          <td>${escapeHtml(w.Total_Time) || "–"}</td>
-          ${VIEW === "walker" ? "" : `<td class="actions-cell">${actions.join(" ")}</td>`}
-        </tr>`);
-        if (open) {
-          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 8 : 9}">${detailGridHtml(w)}</td></tr>`);
-        }
-      }
-      document.getElementById("walks-body").innerHTML = html.join("");
-      renderPicker();
-    }
-
-    function changeListHtml(request) {
-      return `<ul class="change-list">${Object.entries(request.changes || {}).map(([key, after]) => {
-        const before = request.before?.[key];
-        return `<li><strong>${escapeHtml(LABELS[key] || key)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
-      }).join("")}</ul>`;
-    }
-
-    function renderPending() {
-      if (!isAdmin) return;
-      const list = pendingRequests();
-      document.getElementById("pending-count").textContent = list.length ? `(${list.length})` : "";
-      document.getElementById("pending-list").innerHTML = list.length ? list.map((r) => {
-        const requester = r.requested_by ? `${escapeHtml(r.requested_by)}${leaderName(r.requested_by) ? " – " + escapeHtml(leaderName(r.requested_by)) : ""}` : "Unknown leader";
-        return `<div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
-          <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
-          ${changeListHtml(r)}
-          <div class="request-actions">
-            <button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>
-            <button type="button" class="btn btn-small btn-danger" data-action="reject" data-request="${escapeHtml(r.request_id)}">Reject</button>
-          </div>
-        </div>`;
-      }).join("") : `<p class="empty" style="padding:8px 0">No change requests waiting.</p>`;
-    }
-
-    function renderMyRequests() {
-      const panel = document.getElementById("my-requests-panel");
-      if (!isLeader || !myLeaderId) { panel.hidden = true; return; }
-      const mine = Object.values(requests).filter((r) => r && r.requested_by === myLeaderId)
-        .sort((a, b) => String(b.requested_at).localeCompare(String(a.requested_at)));
-      panel.hidden = mine.length === 0;
-      document.getElementById("my-requests-list").innerHTML = mine.map((r) => `
-        <div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
-          <div class="meta">Requested ${escapeHtml(formatDate(r.requested_at))} · <span class="pill pill-${escapeHtml(r.status)}">${escapeHtml(statusLabel(r.status))}</span></div>
-          ${changeListHtml(r)}
-          ${r.status === "rejected" && r.reason ? `<div class="meta">Reason: ${escapeHtml(r.reason)}</div>` : ""}
-        </div>`).join("");
-    }
-
-    function renderAll() {
-      renderTable();
-      renderPending();
-      renderMyRequests();
-    }
-
-    /* ========================================================= DIALOG ========================================================= */
-    const modal = document.getElementById("walk-modal");
-    const form = document.getElementById("walk-form");
-    let dialogMode = null;   // "create" | "edit" | "request"
-    let dialogWalk = null;
-
-    // Dropdown options: fixed list for Grade; Leader from the leaders database (scheduler app);
-    // SCR from the values already used in the walks data. The current value is always included.
-    const NO_LEADER_OPTIONS = ["~~ No Leader", "~~ Leader TBC"];
-    const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
-    function choiceOptions(field, current) {
-      let values;
-      if (field.options) {
-        values = [...field.options];
-      } else if (field.source === "leaders") {
-        values = [...new Set(leaders.map(fullName).filter(Boolean))].sort(byName);
-        values = [...NO_LEADER_OPTIONS, ...values];
-      } else {
-        values = [...new Set(walks.map((w) => str(w[field.key])).filter(Boolean))].sort(byName);
-      }
-      if (current && !values.includes(current)) values.unshift(current);
-      return values;
-    }
-
-    function fieldHtml(field, value, disabled) {
-      const id = `f-${field.key}`;
-      const val = escapeHtml(value ?? "");
-      let control;
-      if (field.type === "choice") {
-        const current = str(value);
-        const options = choiceOptions(field, current).map((v) =>
-          `<option value="${escapeHtml(v)}" ${v === current ? "selected" : ""}>${escapeHtml(v)}</option>`
-        ).join("");
-        control = `<select id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}><option value="" ${current ? "" : "selected"}>–</option>${options}</select>`;
-      } else if (field.type === "textarea") {
-        control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
-      } else {
-        const type = field.type === "url" ? "url" : "text";
-        control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
-      }
-      return `<div class="form-field ${field.full ? "full" : ""}">
-        <label for="${id}">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>
-        ${control}
-        ${field.hint ? `<div class="hint">${escapeHtml(field.hint)}</div>` : ""}
-      </div>`;
-    }
-
-    function openDialog(mode, walk = null) {
-      dialogMode = mode;
-      dialogWalk = walk;
-      const title = document.getElementById("modal-title");
-      const lede = document.getElementById("modal-lede");
-      const submit = document.getElementById("modal-submit");
-      document.getElementById("form-error").hidden = true;
-
-      let fields;
-      if (mode === "create") {
-        title.textContent = "Add walk";
-        lede.textContent = "Creates a new walk in the walks database.";
-        submit.textContent = "Add walk";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
-      } else if (mode === "edit") {
-        title.textContent = `Edit walk ${walk.id}`;
-        lede.textContent = "Changes apply straight away.";
-        submit.textContent = "Save changes";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
-      } else {
-        title.textContent = `Request a change: walk ${walk.id}`;
-        lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
-        submit.textContent = "Send request";
-        fields = EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key));
-      }
-
-      document.getElementById("form-fields").innerHTML = fields.map((f) => {
-        const value = mode === "create"
-          ? (f.key === "walk_key" ? nextWalkId() : "")
-          : (f.key === "walk_key" ? walk.id : str(walk?.[f.key]));
-        return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
-      }).join("");
-      modal.hidden = false;
-      document.getElementById(mode === "create" ? "f-walk_key" : "f-Route_Name")?.focus();
-    }
-
-    function closeDialog() {
-      modal.hidden = true;
-      dialogMode = null;
-      dialogWalk = null;
-    }
-
-    function showError(message) {
-      const error = document.getElementById("form-error");
-      error.textContent = message;
-      error.hidden = false;
-      return null;
-    }
-
-    // Reads and checks the form. Returns the cleaned values, or null after showing an error.
-    function readForm(mode) {
-      const get = (key) => str(form.elements[key]?.value);
-      const record = {};
-      for (const f of EDITABLE_FIELDS) record[f.key] = get(f.key);
-      if (mode !== "request") record.walk_key = get("walk_key");
-
-      if (mode !== "request") {
-        if (!record.walk_key) return showError("Walk key is required.");
-        if (!/^[A-Za-z0-9_-]+$/.test(record.walk_key)) return showError("Walk key can only use letters, numbers, _ and -.");
-        if (mode === "create" && walkById(record.walk_key)) return showError(`Walk key ${record.walk_key} is already used.`);
-      }
-      for (const f of EDITABLE_FIELDS) {
-        if (f.required && !record[f.key]) return showError(`${f.label} is required.`);
-      }
-      if (record.Grade && !GRADES.includes(record.Grade)) return showError("Grade must be E, M, MS, S or VS.");
-
-      const lat = record.Latitude, lon = record.Longitude;
-      if (Boolean(lat) !== Boolean(lon)) return showError("Enter both meeting point latitude and longitude, or leave both blank.");
-      if (lat && (!Number.isFinite(Number(lat)) || Math.abs(Number(lat)) > 90)) return showError("Latitude must be a number between -90 and 90.");
-      if (lon && (!Number.isFinite(Number(lon)) || Math.abs(Number(lon)) > 180)) return showError("Longitude must be a number between -180 and 180.");
-
-      for (const f of EDITABLE_FIELDS.filter((x) => x.type === "url")) {
-        if (!record[f.key]) continue;
-        try {
-          const u = new URL(record[f.key]);
-          if (!["http:", "https:"].includes(u.protocol)) throw new Error();
-        } catch (_) {
-          return showError(`${f.label} must be a full web address starting with https://`);
-        }
-      }
-      return record;
-    }
-
-    /* ========================================================= ACTIONS ========================================================= */
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!dialogMode || !walksDb) return;
-      const mode = dialogMode;
-      const record = readForm(mode);
-      if (!record) return;
-
-      try {
-        if (mode === "create") {
-          const data = {};
-          for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
-          await set(ref(walksDb, "walks/" + record.walk_key), data);
-        } else if (mode === "edit") {
-          // update() keeps any fields this page does not manage
-          const data = {};
-          for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
-          await update(ref(walksDb, "walks/" + dialogWalk.id), data);
-        } else {
-          const current = dialogWalk;
-          const changes = {};
-          const before = {};
-          for (const f of EDITABLE_FIELDS) {
-            if (LEADER_HIDDEN_FIELDS.includes(f.key)) continue;   // not on the leader's form
-            const was = str(current[f.key]);
-            if (record[f.key] !== was) {
-              changes[f.key] = record[f.key];
-              before[f.key] = was;
-            }
-          }
-          if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
-          if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
-          if (!myLeaderId) return showError("Choose the leader ID you are requesting as.");
-
-          const requestId = `${current.id}_${Date.now()}`;
-          await set(ref(walksDb, "walk_requests/" + requestId), {
-            request_id: requestId,
-            walk_id: current.id,
-            requested_by: myLeaderId,
-            status: "pending",
-            requested_at: new Date().toISOString(),
-            changes,
-            before,
-          });
-        }
-        closeDialog();
-      } catch (err) {
-        console.error("Save failed:", err);
-        showError("Could not save. Check the database connection and permissions.");
-      }
-    });
-
-    document.getElementById("modal-cancel").addEventListener("click", closeDialog);
-    modal.addEventListener("click", (e) => { if (e.target === modal) closeDialog(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeDialog(); });
-
-    document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
-    document.getElementById("search").addEventListener("input", renderTable);
-    document.getElementById("grade-filter").addEventListener("change", renderTable);
-    document.getElementById("leader-picker").addEventListener("change", (e) => {
-      myLeaderId = e.target.value;
-      renderAll();
-    });
-
-    // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
-    document.getElementById("walks-body").addEventListener("click", async (e) => {
-      const btn = e.target.closest("[data-action]");
-      const clickedRow = e.target.closest("tr.walk-row");
-
-      if (!btn) {
-        // Whole row toggles, except when a control is clicked
-        if (clickedRow && !e.target.closest("button, a")) toggleWalk(clickedRow.dataset.id);
-        return;
-      }
-      const walk = walkById(btn.dataset.id);
-      if (!walk) return;
-
-      if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
-      if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
-      if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
-      if (btn.dataset.action === "delete" && isAdmin) {
-        const used = bookingCountFor(walk.id);
-        const pending = pendingFor(walk.id).length;
-        const notes = [];
-        if (used) notes.push(`${used} walk booking(s) use this walk number. They will no longer link to a route.`);
-        if (pending) notes.push(`${pending} change request(s) for this walk will be left waiting and cannot be approved.`);
-        const message = `Delete walk ${walk.id} (${walk.Route_Name || "no name"})?${notes.length ? "\n\n" + notes.join("\n") : ""}`;
-        if (!confirm(message)) return;
-        try {
-          await remove(ref(walksDb, "walks/" + walk.id));
-          expandedWalks.delete(walk.id);
-        } catch (err) {
-          console.error("Delete failed:", err);
-          alert("Could not delete. Check the database permissions.");
-        }
-      }
-    });
-
-    function toggleWalk(id) {
-      if (expandedWalks.has(id)) expandedWalks.delete(id);
-      else expandedWalks.add(id);
-      renderTable();
-    }
-
-    // Pending request buttons (admin)
-    document.getElementById("pending-list").addEventListener("click", async (e) => {
-      const btn = e.target.closest("[data-action]");
-      if (!btn || !isAdmin) return;
-      const request = requests[btn.dataset.request];
-      if (!request || request.status !== "pending") return;
-
-      try {
-        if (btn.dataset.action === "approve") {
-          const walk = walkById(request.walk_id);
-          if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
-          if (!confirm(`Approve this change to walk ${walk.id}?`)) return;
-          const data = {};
-          for (const [key, value] of Object.entries(request.changes || {})) data[key] = toStored(value);
-          await update(ref(walksDb, "walks/" + request.walk_id), data);
-          await update(ref(walksDb, "walk_requests/" + request.request_id), {
-            status: "approved",
-            reviewed_at: new Date().toISOString(),
-          });
-        }
-        if (btn.dataset.action === "reject") {
-          const reason = prompt("Reason for rejecting (optional):", "");
-          if (reason === null) return;
-          await update(ref(walksDb, "walk_requests/" + request.request_id), {
-            status: "rejected",
-            reason: str(reason),
-            reviewed_at: new Date().toISOString(),
-          });
-        }
-      } catch (err) {
-        console.error("Review failed:", err);
-        alert("Could not update the request. Check the database permissions.");
-      }
-    });
-
-    /* ========================================================= DATA ========================================================= */
-    function start() {
-      setupPage();
-      if (!walksDb) {
-        document.getElementById("walks-body").innerHTML = `<tr><td colspan="9" class="empty">The walks database could not be reached.</td></tr>`;
-        return;
-      }
-
-      onValue(ref(walksDb, "walks"), (snapshot) => {
-        const data = snapshot.val() || {};
-        walks = Object.entries(data)
-          .filter(([, w]) => w)
-          .map(([key, w]) => ({ ...w, id: key }))
-          .sort(sortById);
-        renderAll();
-      }, (error) => console.error("Unable to load walks:", error));
-
-      onValue(ref(walksDb, "walk_requests"), (snapshot) => {
-        requests = snapshot.val() || {};
-        renderAll();
-      }, (error) => console.error("Unable to load change requests:", error));
-
-      // Leaders and walk bookings live in the calendar project. Both are read only here.
-      if (bookingsDb) {
-        onValue(ref(bookingsDb, "leaders"), (snapshot) => {
-          leaders = Object.values(snapshot.val() || {}).filter(Boolean)
-            .sort((a, b) => Number(a.leader_id) - Number(b.leader_id));
-          renderAll();
-        }, (error) => console.error("Unable to load leaders:", error));
-
-        onValue(ref(bookingsDb, "walk_bookings"), (snapshot) => {
-          bookings = snapshot.val() || {};
-        }, (error) => console.error("Unable to load bookings:", error));
-      }
-    }
-
+  function safeUrl(raw) {
     try {
-      const walksApp = initializeApp(walksConfig, "walksDatabase");
-      walksDb = getDatabase(walksApp);
-      const auth = getAuth(walksApp);
-      let bookingsReady = Promise.resolve();
-      try {
-        const bookingsApp = initializeApp(bookingsConfig, "walksBookingsRead");
-        bookingsDb = getDatabase(bookingsApp);
-        bookingsReady = signInAnonymously(getAuth(bookingsApp)).catch((err) => console.error("Bookings sign-in failed:", err));
-      } catch (err) {
-        console.error("Bookings connection failed.", err);
-      }
-      signInAnonymously(auth)
-        .then(() => bookingsReady)
-        .then(start)
-        .catch((err) => {
-          console.error("Anonymous sign-in failed:", err);
-          start();
-        });
-    } catch (err) {
-      console.error("Walks Firebase startup failed.", err);
-      start();
-    }
-  </script>
-</body>
+      const u = new URL(clean(raw), window.location.href);
+      return ["http:", "https:"].includes(u.protocol) ? u.href : "";
+    } catch (_) { return ""; }
+  }
 
-</html>
+  // Live walks only (as the walker view shows them), plus summer programme walks
+  function collectItems() {
+    const days = weekDays().map(dmy);
+    const out = [];
+    Object.values(bookings).forEach((b) => {
+      if (!b || !days.includes(b.date) || b.status !== "live" || b.cancelled === true) return;
+      const route = routeFor(b);
+      out.push({
+        kind: "walk", date: b.date, time: clean(b.start_time), name: clean(route.Route_Name || route.Walk_Name) || clean(b.walk_name) || `Walk ${clean(b.walk_number)}`,
+        walkId: clean(b.walk_number), leader: clean(b.leader_name), leaderId: clean(b.leader_id), comments: clean(b.comments),
+        grade: clean(route.Grade || b.walk_grade), terrain: clean(route.Terrain), scr: clean(route.Scr), x: clean(route.X),
+        distance: clean(route.Distance), ascent: clean(route.Ascent), duration: clean(route.Total_Time), dogs: clean(route.Dogs),
+        description: clean(route.Route_Description), directions: clean(route.Directions),
+        coords: coordsOf(route), wis: safeUrl(route.WiS_URL ?? route.WIS_URL ?? route.WiS_Url ?? ""),
+      });
+    });
+    Object.values(socials).forEach((r) => {
+      if (!r || r.type !== "summer" || !days.includes(r.date)) return;
+      out.push({
+        kind: "summer", date: r.date, time: clean(r.start_time), name: clean(r.title) || "Summer walk",
+        leader: clean(r.leader), duration: clean(r.duration), distance: clean(r.distance), ascent: clean(r.ascent),
+        description: clean(r.description), meeting: clean(r.meeting_point), contact: clean(r.contact),
+      });
+    });
+    return out.sort((a, b) => (isoOf(a.date) + a.time).localeCompare(isoOf(b.date) + b.time));
+  }
+
+  function cardHtml(it, idx) {
+    const d = weekDays().find((day) => dmy(day) === it.date);
+    const when = d ? `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : it.date;
+    const summer = it.kind === "summer";
+    const detailLines = [
+      summer ? "" : `<p class="wk-fact"><strong>Grade:</strong> ${[it.grade, it.terrain, it.scr, it.x].map(dash).join(" / ")}</p>`,
+      `<p class="wk-fact"><strong>Distance:</strong> ${dash(it.distance)}</p>`,
+      `<p class="wk-fact"><strong>Ascent:</strong> ${dash(it.ascent)}</p>`,
+    ].join("");
+    const when_line = [when, clean(it.time), clean(it.duration)].filter(Boolean).join(" · ");
+    return `<button type="button" class="wk-card${summer ? " wk-summer" : ""}" data-idx="${idx}">
+      <div class="wk-img">
+        ${summer ? `<span class="wk-tag">Summer</span>` : ""}
+        <svg viewBox="0 0 24 24" fill="none" stroke="${summer ? "#a16207" : "#2d5b3e"}" stroke-width="1.6"><path d="M3 20l6-10 4 6 3-4 5 8z"/></svg>
+      </div>
+      <div class="wk-body">
+        <div class="wk-title">${esc(it.name)}</div>
+        ${it.description ? `<div class="wk-desc">${esc(it.description)}</div>` : ""}
+        <div class="wk-facts">${detailLines}</div>
+      </div>
+      <div class="wk-foot-row">
+        <span class="wk-when-line">${esc(when_line)}</span>
+        <span class="wk-btn">See details</span>
+      </div>
+    </button>`;
+  }
+
+  function row(label, valueHtml) {
+    return `<div class="wk-row"><span class="wk-row-label">${label}</span><span class="wk-row-value">${valueHtml}</span></div>`;
+  }
+
+  // Leader record from the leaders list: by Leader ID, else by name
+  function leaderFor(it) {
+    const list = Object.values(leaders || {}).filter(Boolean);
+    return list.find((l) => clean(l.leader_id) && clean(l.leader_id) === it.leaderId)
+      || list.find((l) => fullName(l) === clean(it.leader))
+      || null;
+  }
+  function fullName(l) {
+    return l ? `${clean(l.first_name)} ${clean(l.surname)}`.trim() : "";
+  }
+
+  // Popup: the same layout as the walker card in the scheduler
+  function dialogHtml(it) {
+    const dt = new Date(`${isoOf(it.date)}T00:00`);
+    const longDate = isNaN(dt) ? it.date : dt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+    const when = [longDate, clean(it.time)].filter(Boolean).join(" • ");
+
+    const stats = it.kind === "walk"
+      ? [["Distance", dash(it.distance)], ["Ascent", dash(it.ascent)], ["Duration", dash(it.duration)],
+         ["Grade / Terrain / SCR / X", [it.grade, it.terrain, it.scr, it.x].map(dash).join(" / ")]]
+      : [["Distance", dash(it.distance)], ["Ascent", dash(it.ascent)], ["Duration", dash(it.duration)]];
+    const statsHtml = `<div class="wk-stats">${stats.map(([l, v]) => `<div class="wk-stat"><div class="wk-stat-label">${l}</div><div class="wk-stat-value">${v}</div></div>`).join("")}</div>`;
+
+    const quoteParts = [it.description, it.comments].filter((v) => clean(v)).map((v) => esc(clean(v)));
+    const quote = quoteParts.length ? `<blockquote class="wk-quote">${quoteParts.join('<span class="wk-quote-break"></span>')}</blockquote>` : "";
+
+    const L = leaderFor(it);
+    const phones = L ? [L.phone_1, L.phone_2].filter((p) => clean(p)) : [];
+    const leaderValue = L ? esc(fullName(L)) : (clean(it.leader) ? esc(clean(it.leader)) : "–");
+    const phoneHtml = phones.length
+      ? phones.map((p) => `<a href="tel:${esc(String(p).replace(/[^\d+]/g, ""))}">${esc(clean(p))}</a>`).join(" · ")
+        + (L && L.whats_app === "y" ? `<span class="wk-pill">WhatsApp</span>` : "")
+      : "";
+
+    const rows = [
+      row("Leader:", leaderValue),
+      phoneHtml ? row("Phone:", phoneHtml) : "",
+      it.kind === "summer" && clean(it.contact) ? row("Booking / contact:", esc(clean(it.contact))) : "",
+      it.coords ? row("Meeting point:", `<a href="${esc(it.coords.url)}" target="_blank" rel="noopener noreferrer">${esc(it.coords.text)} ↗</a>`)
+        : (clean(it.meeting) ? row("Meeting point:", esc(clean(it.meeting))) : ""),
+      it.wis ? row("Route map:", `<a href="${esc(it.wis)}" target="_blank" rel="noopener noreferrer">Walks In Spain ↗</a>`) : "",
+    ].join("");
+
+    const directions = it.kind === "walk" && clean(it.directions)
+      ? `<div class="wk-section">Driving directions</div><div class="wk-dirs">${esc(clean(it.directions))}</div>` : "";
+    const dogs = it.kind === "walk" && clean(it.dogs) ? `<div class="wk-dogs">🐾 ${esc(clean(it.dogs))}</div>` : "";
+
+    return `
+      <div class="wk-pop-head">
+        <button type="button" class="wk-close" data-close aria-label="Close">×</button>
+        <h3 id="wk-modal-title">${esc(it.name)}</h3>
+        <div class="wk-pop-date">📅 ${esc(when)}</div>
+      </div>
+      <div class="wk-pop-body">
+        ${statsHtml}
+        ${quote}
+        ${it.kind === "walk" ? `<button type="button" class="wk-levels-link" data-open-levels>What do the walk levels mean?</button>` : ""}
+        <div class="wk-section">Leader and location</div>
+        ${rows}
+        ${directions}
+        ${dogs}
+      </div>`;
+  }
+
+  function openWalk(idx) {
+    const it = items[idx];
+    if (!it) return;
+    document.getElementById("wk-dialog").innerHTML = dialogHtml(it);
+    const modal = document.getElementById("wk-modal");
+    modal.style.display = "";
+    modal.classList.add("open");
+    document.querySelector("#wk-dialog [data-close]").focus();
+  }
+  function closeWalk() {
+    const modal = document.getElementById("wk-modal");
+    modal.classList.remove("open");
+    modal.style.display = "none";
+  }
+  function openLevels() {
+    document.getElementById("wk-levels").classList.add("open");
+    document.querySelector("#wk-levels .wk-levels-close").focus();
+  }
+  function closeLevels() {
+    document.getElementById("wk-levels").classList.remove("open");
+  }
+
+  function render() {
+    const days = weekDays();
+    const fmt = (d) => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    document.getElementById("wk-range").textContent = `${fmt(days[0])} – ${fmt(days[6])}`;
+    const grid = document.getElementById("wk-grid");
+    if (!loaded) { grid.innerHTML = `<p class="wk-status">Loading this week's walks…</p>`; return; }
+    items = collectItems();
+    grid.innerHTML = items.length
+      ? items.map(cardHtml).join("")
+      : `<p class="wk-status">No walks scheduled this week.</p>`;
+  }
+
+  function showError() {
+    document.getElementById("wk-grid").innerHTML = `<p class="wk-status">This week's walks could not be loaded. Please try again later.</p>`;
+  }
+
+  // Move the popup to <body> so theme containers (transforms, overflow, positioning) cannot trap or clip it
+  document.body.appendChild(document.getElementById("wk-modal"));
+  document.body.appendChild(document.getElementById("wk-levels"));
+
+  document.getElementById("wk-grid").addEventListener("click", (e) => {
+    const card = e.target.closest("[data-idx]");
+    if (card) openWalk(Number(card.dataset.idx));
+  });
+  document.getElementById("wk-modal").addEventListener("click", (e) => {
+    if (e.target.closest("[data-open-levels]")) { openLevels(); return; }
+    if (e.target.id === "wk-modal" || e.target.closest("[data-close]")) closeWalk();
+  });
+  document.getElementById("wk-levels").addEventListener("click", (e) => {
+    if (e.target.id === "wk-levels" || e.target.closest("[data-close-levels]")) closeLevels();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (document.getElementById("wk-levels").classList.contains("open")) closeLevels();
+    else closeWalk();
+  });
+
+  render();
+  try {
+    const calApp = initializeApp(calendarConfig, "wkCalendar");
+    const walksApp = initializeApp(walksConfig, "wkWalks");
+    const calDb = getDatabase(calApp);
+    const walksDb = getDatabase(walksApp);
+    Promise.allSettled([signInAnonymously(getAuth(calApp)), signInAnonymously(getAuth(walksApp))]).then(() => {
+      onValue(ref(calDb, "walk_bookings"), (s) => { bookings = s.val() || {}; loaded = true; render(); }, showError);
+      onValue(ref(calDb, "social_events"), (s) => { socials = s.val() || {}; render(); }, showError);
+      onValue(ref(walksDb, "walks"), (s) => { masters = s.val() || {}; render(); }, showError);
+      onValue(ref(walksDb, "leaders"), (s) => { leaders = s.val() || {}; }, () => {});
+    });
+  } catch (err) {
+    showError();
+  }
+  // Roll over to the new week at midnight without a reload
+  setInterval(render, 15 * 60 * 1000);
+</script>
