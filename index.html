@@ -575,7 +575,7 @@
       } else if (field.type === "textarea") {
         control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
       } else {
-        const type = field.type === "url" ? "url" : "text";
+        const type = "text";
         control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
       }
       return `<div class="form-field ${field.full ? "full" : ""}">
@@ -656,15 +656,6 @@
       if (lat && (!Number.isFinite(Number(lat)) || Math.abs(Number(lat)) > 90)) return showError("Latitude must be a number between -90 and 90.");
       if (lon && (!Number.isFinite(Number(lon)) || Math.abs(Number(lon)) > 180)) return showError("Longitude must be a number between -180 and 180.");
 
-      for (const f of EDITABLE_FIELDS.filter((x) => x.type === "url")) {
-        if (!record[f.key]) continue;
-        try {
-          const u = new URL(record[f.key]);
-          if (!["http:", "https:"].includes(u.protocol)) throw new Error();
-        } catch (_) {
-          return showError(`${f.label} must be a full web address starting with https://`);
-        }
-      }
       return record;
     }
 
