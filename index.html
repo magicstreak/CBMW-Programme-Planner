@@ -146,6 +146,7 @@
       font-weight: 600;
     }
     .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
+    .file-remove { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-top: 4px; }
     .pill-approved { background: var(--green-bg); color: var(--green-text); }
     .pill-rejected { background: #fee2e2; color: var(--red); }
     .grade { font-weight: 700; }
@@ -361,6 +362,11 @@
     ];
     // Leader view (details and change requests) does not show the last walked / last offered history
     const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
+    // File uploads: shown in the edit and request forms. The walk record keeps the file name; the file itself is stored beside it.
+    const FILE_FIELDS = [
+      { key: "GPX", nameKey: "GPX_Name", type: "file", label: "GPX route file", accept: ".gpx,application/gpx+xml,text/xml" },
+      { key: "Photo", nameKey: "Photo_Name", type: "file", label: "Walk photo (resized automatically)", accept: "image/*" },
+    ];
     // The walk key is the database key, e.g. walk_025. Bookings store it as walk_number.
     const ID_FIELD = { key: "walk_key", label: "Walk key", required: true, hint: "e.g. walk_610. Bookings use this as walk number." };
     const LABELS = Object.fromEntries([ID_FIELD, ...EDITABLE_FIELDS].map((f) => [f.key, f.label]));
@@ -403,6 +409,67 @@
 
     // Blank optional values are stored as null so Firebase removes them
     const toStored = (v) => String(v ?? "");
+
+    /* ========================================================= FILES (GPX and photo) =========================================================
+       GPX routes are stored as text at walk_gpx/{walk key}; photos as resized JPEG data at walk_photos/{walk key}.
+       Leader change requests carry the file contents; an empty GPX_Text or Photo_Data means "remove the file". */
+    const MAX_GPX_CHARS = 2000000;
+    const PHOTO_MAX_EDGE = 1600;
+    const PHOTO_MAX_CHARS = 1000000;
+
+    async function saveFileNode(walkId, path, node) {
+      const target = ref(walksDb, `${path}/${walkId}`);
+      if (node === null) return remove(target);
+      return set(target, node);
+    }
+
+    async function photoToDataUrl(file) {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      if (bitmap.close) bitmap.close();
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      if (dataUrl.length > PHOTO_MAX_CHARS) throw new Error("That photo is still too large after resizing. Try a smaller picture.");
+      return dataUrl;
+    }
+
+    // Reads the chosen files. Returns only what changed: gpx / photo are { name, text|data } or { remove: true }
+    async function readFileChanges() {
+      const out = {};
+      if (document.getElementById("f-GPX-remove")?.checked) out.gpx = { remove: true };
+      const gpxFile = document.getElementById("f-GPX")?.files?.[0];
+      if (gpxFile) {
+        const text = await gpxFile.text();
+        if (text.length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
+        if (!/<gpx[\s>]/i.test(text)) throw new Error("That file does not look like a GPX route.");
+        out.gpx = { name: gpxFile.name, text };
+      }
+      if (document.getElementById("f-Photo-remove")?.checked) out.photo = { remove: true };
+      const photoFile = document.getElementById("f-Photo")?.files?.[0];
+      if (photoFile) {
+        if (!photoFile.type.startsWith("image/")) throw new Error("The photo must be an image file.");
+        out.photo = { name: photoFile.name, data: await photoToDataUrl(photoFile) };
+      }
+      return out;
+    }
+
+    // The walk-record fields that hold the file names
+    function fileNameFields(fc) {
+      const out = {};
+      if (fc.gpx) out.GPX_Name = fc.gpx.remove ? "" : fc.gpx.name;
+      if (fc.photo) out.Photo_Name = fc.photo.remove ? "" : fc.photo.name;
+      return out;
+    }
+
+    // Writes the file contents for an admin save (or an approved request)
+    async function saveFileChanges(walkId, fc) {
+      const now = new Date().toISOString();
+      if (fc.gpx) await saveFileNode(walkId, "walk_gpx", fc.gpx.remove ? null : { name: fc.gpx.name, text: fc.gpx.text, updated_at: now });
+      if (fc.photo) await saveFileNode(walkId, "walk_photos", fc.photo.remove ? null : { name: fc.photo.name, data: fc.photo.data, updated_at: now });
+    }
 
     /* ========================================================= RENDER ========================================================= */
     function setupPage() {
@@ -574,6 +641,12 @@
         control = `<select id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}><option value="" ${current ? "" : "selected"}>–</option>${options}</select>`;
       } else if (field.type === "textarea") {
         control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
+      } else if (field.type === "file") {
+        const current = str(value);
+        control = `<input id="${id}" name="${field.key}" type="file" accept="${escapeHtml(field.accept || "")}" ${disabled ? "disabled" : ""} />
+          ${current
+            ? `<label class="file-remove"><input type="checkbox" id="${id}-remove" /> Remove current file (${escapeHtml(current)})</label>`
+            : `<div class="hint">No file attached yet.</div>`}`;
       } else {
         const type = "text";
         control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
@@ -598,23 +671,23 @@
         title.textContent = "Add walk";
         lede.textContent = "Creates a new walk in the walks database.";
         submit.textContent = "Add walk";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else if (mode === "edit") {
         title.textContent = `Edit walk ${walk.id}`;
         lede.textContent = "Changes apply straight away.";
         submit.textContent = "Save changes";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else {
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
         submit.textContent = "Send request";
-        fields = EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key));
+        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)), ...FILE_FIELDS];
       }
 
       document.getElementById("form-fields").innerHTML = fields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
-          : (f.key === "walk_key" ? walk.id : str(walk?.[f.key]));
+          : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
         return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
       }).join("");
       modal.hidden = false;
@@ -667,16 +740,27 @@
       const record = readForm(mode);
       if (!record) return;
 
+      let files;
+      try {
+        files = await readFileChanges();
+      } catch (err) {
+        return showError(err.message);
+      }
+
       try {
         if (mode === "create") {
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          Object.assign(data, fileNameFields(files));
           await set(ref(walksDb, "walks/" + record.walk_key), data);
+          await saveFileChanges(record.walk_key, files);
         } else if (mode === "edit") {
           // update() keeps any fields this page does not manage
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          Object.assign(data, fileNameFields(files));
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
+          await saveFileChanges(dialogWalk.id, files);
         } else {
           const current = dialogWalk;
           const changes = {};
@@ -688,6 +772,15 @@
               changes[f.key] = record[f.key];
               before[f.key] = was;
             }
+          }
+          // Files travel inside the request; an empty GPX_Text or Photo_Data means "remove the file"
+          if (files.gpx) {
+            changes.GPX_Name = files.gpx.remove ? "" : files.gpx.name;
+            changes.GPX_Text = files.gpx.remove ? "" : files.gpx.text;
+          }
+          if (files.photo) {
+            changes.Photo_Name = files.photo.remove ? "" : files.photo.name;
+            changes.Photo_Data = files.photo.remove ? "" : files.photo.data;
           }
           if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
           if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
@@ -749,6 +842,7 @@
         if (!confirm(message)) return;
         try {
           await remove(ref(walksDb, "walks/" + walk.id));
+          await Promise.all([remove(ref(walksDb, "walk_gpx/" + walk.id)), remove(ref(walksDb, "walk_photos/" + walk.id))]).catch(() => {});
           expandedWalks.delete(walk.id);
         } catch (err) {
           console.error("Delete failed:", err);
@@ -776,8 +870,15 @@
           if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
           if (!confirm(`Approve this change to walk ${walk.id}?`)) return;
           const data = {};
-          for (const [key, value] of Object.entries(request.changes || {})) data[key] = toStored(value);
+          const fileWrites = [];
+          const now = new Date().toISOString();
+          for (const [key, value] of Object.entries(request.changes || {})) {
+            if (key === "GPX_Text") fileWrites.push(saveFileNode(request.walk_id, "walk_gpx", value ? { name: request.changes.GPX_Name || "", text: value, updated_at: now } : null));
+            else if (key === "Photo_Data") fileWrites.push(saveFileNode(request.walk_id, "walk_photos", value ? { name: request.changes.Photo_Name || "", data: value, updated_at: now } : null));
+            else data[key] = toStored(value);
+          }
           await update(ref(walksDb, "walks/" + request.walk_id), data);
+          await Promise.all(fileWrites);
           await update(ref(walksDb, "walk_requests/" + request.request_id), {
             status: "approved",
             reviewed_at: new Date().toISOString(),
