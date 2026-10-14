@@ -147,6 +147,9 @@
     }
     .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
     .file-remove { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-top: 4px; }
+    .pill-file { background: #e0f2fe; color: #075985; margin-left: 4px; }
+    .file-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .file-sep { width: 1px; height: 18px; background: #d4d4d8; display: inline-block; }
     .pill-approved { background: var(--green-bg); color: var(--green-text); }
     .pill-rejected { background: #fee2e2; color: var(--red); }
     .grade { font-weight: 700; }
@@ -282,7 +285,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     /* ========================================================= SETUP ========================================================= */
@@ -493,7 +496,32 @@
         leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
     }
 
+    // Small markers in the walk name cell, so files show in the list as well as the edit dialog
+    function fileBadges(walk) {
+      const parts = [];
+      if (str(walk.GPX_Name)) parts.push(`<span class="pill pill-file" title="${escapeHtml(walk.GPX_Name)}">GPX</span>`);
+      if (str(walk.Photo_Name)) parts.push(`<span class="pill pill-file" title="${escapeHtml(walk.Photo_Name)}">Photo</span>`);
+      return parts.length ? ` ${parts.join(" ")}` : "";
+    }
+
     function detailGridHtml(walk) {
+      // Files: the names are on the walk record; the contents load only when asked for
+      const fileCell = (() => {
+        const gpx = str(walk.GPX_Name);
+        const photo = str(walk.Photo_Name);
+        return `<div class="wide">
+          <div class="detail-label">Files</div>
+          <div class="detail-value file-links">
+            ${gpx
+              ? `<span>${escapeHtml(gpx)}</span> <button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>`
+              : `<span class="muted">No GPX file</span>`}
+            <span class="file-sep"></span>
+            ${photo
+              ? `<span>${escapeHtml(photo)}</span> <button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>`
+              : `<span class="muted">No photo</span>`}
+          </div>
+        </div>`;
+      })();
       const cell = (f) => {
         const value = str(walk[f.key]);
         const shown = !value ? '<span class="muted">–</span>'
@@ -510,7 +538,7 @@
         "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
       const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
-      return `<div class="detail-grid">${fields.map(cell).join("")}</div>`;
+      return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
     }
 
     function renderTable() {
@@ -543,7 +571,7 @@
             </button>
           </td>
           <td class="walk-id">${escapeHtml(w.id)}</td>
-          <td>${escapeHtml(w.Route_Name) || "–"}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
+          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
           <td>${escapeHtml(w.Pueblo) || "–"}</td>
           <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
           <td>${escapeHtml(w.Distance) || "–"}</td>
@@ -829,6 +857,7 @@
       const walk = walkById(btn.dataset.id);
       if (!walk) return;
 
+      if (btn.dataset.action === "download-gpx" || btn.dataset.action === "view-photo") return openWalkFile(walk.id, btn.dataset.action);
       if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
       if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
       if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
@@ -850,6 +879,32 @@
         }
       }
     });
+
+    // Loads a walk's GPX or photo from the database, only when asked for
+    async function openWalkFile(walkId, action) {
+      try {
+        if (action === "download-gpx") {
+          const file = (await get(ref(walksDb, "walk_gpx/" + walkId))).val();
+          if (!file || !file.text) return alert("The GPX file could not be found.");
+          const url = URL.createObjectURL(new Blob([file.text], { type: "application/gpx+xml" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name || `${walkId}.gpx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } else {
+          const photo = (await get(ref(walksDb, "walk_photos/" + walkId))).val();
+          if (!photo || !photo.data) return alert("The photo could not be found.");
+          const blob = await (await fetch(photo.data)).blob();
+          window.open(URL.createObjectURL(blob), "_blank", "noopener");
+        }
+      } catch (err) {
+        console.error("Could not open the file:", err);
+        alert("Could not open the file. Check the database connection.");
+      }
+    }
 
     function toggleWalk(id) {
       if (expandedWalks.has(id)) expandedWalks.delete(id);
