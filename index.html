@@ -440,21 +440,27 @@
     }
 
     // Reads the chosen files. Returns only what changed: gpx / photo are { name, text|data } or { remove: true }
-    async function readFileChanges() {
+    // namesOnly (leader requests): only the file names are recorded; the admin adds the files themselves
+    async function readFileChanges(namesOnly = false) {
       const out = {};
       if (document.getElementById("f-GPX-remove")?.checked) out.gpx = { remove: true };
       const gpxFile = document.getElementById("f-GPX")?.files?.[0];
       if (gpxFile) {
-        const text = await gpxFile.text();
-        if (text.length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
-        if (!/<gpx[\s>]/i.test(text)) throw new Error("That file does not look like a GPX route.");
-        out.gpx = { name: gpxFile.name, text };
+        if (!/\.gpx$/i.test(gpxFile.name)) throw new Error("The route file must be a .gpx file.");
+        if (namesOnly) {
+          out.gpx = { name: gpxFile.name };
+        } else {
+          const text = await gpxFile.text();
+          if (text.length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
+          if (!/<gpx[\s>]/i.test(text)) throw new Error("That file does not look like a GPX route.");
+          out.gpx = { name: gpxFile.name, text };
+        }
       }
       if (document.getElementById("f-Photo-remove")?.checked) out.photo = { remove: true };
       const photoFile = document.getElementById("f-Photo")?.files?.[0];
       if (photoFile) {
         if (!photoFile.type.startsWith("image/")) throw new Error("The photo must be an image file.");
-        out.photo = { name: photoFile.name, data: await photoToDataUrl(photoFile) };
+        out.photo = namesOnly ? { name: photoFile.name } : { name: photoFile.name, data: await photoToDataUrl(photoFile) };
       }
       return out;
     }
@@ -588,10 +594,20 @@
     }
 
     function changeListHtml(request) {
-      return `<ul class="change-list">${Object.entries(request.changes || {}).map(([key, after]) => {
+      const changes = request.changes || {};
+      const lines = Object.entries(changes).filter(([key]) => key !== "GPX_Text" && key !== "Photo_Data").map(([key, after]) => {
         const before = request.before?.[key];
-        return `<li><strong>${escapeHtml(LABELS[key] || key)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
-      }).join("")}</ul>`;
+        const label = { GPX_Name: "GPX file name", Photo_Name: "Photo file name" }[key] || LABELS[key] || key;
+        return `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
+      });
+      // Files are checked by name and downloaded or viewed on demand, never shown as raw data
+      if (changes.GPX_Text) {
+        lines.push(`<li><strong>GPX file:</strong> ${escapeHtml(changes.GPX_Name || "route.gpx")} <button type="button" class="btn btn-small" data-action="review-gpx" data-request="${escapeHtml(request.request_id)}">Download</button></li>`);
+      }
+      if (changes.Photo_Data) {
+        lines.push(`<li><strong>Photo:</strong> ${escapeHtml(changes.Photo_Name || "photo.jpg")} <button type="button" class="btn btn-small" data-action="review-photo" data-request="${escapeHtml(request.request_id)}">View</button></li>`);
+      }
+      return `<ul class="change-list">${lines.join("")}</ul>`;
     }
 
     function renderPending() {
@@ -709,7 +725,8 @@
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
         submit.textContent = "Send request";
-        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)), ...FILE_FIELDS];
+        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)),
+          ...FILE_FIELDS.map((f) => ({ ...f, hint: "Your file goes to an admin for approval." }))];
       }
 
       document.getElementById("form-fields").innerHTML = fields.map((f) => {
@@ -801,7 +818,7 @@
               before[f.key] = was;
             }
           }
-          // Files travel inside the request; an empty GPX_Text or Photo_Data means "remove the file"
+          // Files travel inside the request for approval; an empty GPX_Text or Photo_Data means "remove the file"
           if (files.gpx) {
             changes.GPX_Name = files.gpx.remove ? "" : files.gpx.name;
             changes.GPX_Text = files.gpx.remove ? "" : files.gpx.text;
@@ -918,6 +935,24 @@
       if (!btn || !isAdmin) return;
       const request = requests[btn.dataset.request];
       if (!request || request.status !== "pending") return;
+
+      if (btn.dataset.action === "review-gpx" || btn.dataset.action === "review-photo") {
+        const c = request.changes || {};
+        if (btn.dataset.action === "review-gpx") {
+          const url = URL.createObjectURL(new Blob([c.GPX_Text], { type: "application/gpx+xml" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = c.GPX_Name || "route.gpx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } else {
+          const blob = await (await fetch(c.Photo_Data)).blob();
+          window.open(URL.createObjectURL(blob), "_blank", "noopener");
+        }
+        return;
+      }
 
       try {
         if (btn.dataset.action === "approve") {
