@@ -147,6 +147,20 @@
     }
     .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
     .file-remove { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-top: 4px; }
+    .file-panel { grid-column: 1 / -1; border: 1px solid var(--border, #e4e4e7); border-radius: 10px; padding: 14px; background: #fafafa; }
+    .file-panel-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; }
+    .file-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .file-card { background: #fff; border: 1px solid #e4e4e7; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .file-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
+    .file-status { font-size: 0.8rem; font-weight: 500; color: #71717a; text-align: right; overflow-wrap: anywhere; }
+    .file-status.has { color: #166534; }
+    .file-drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 10px; border: 2px dashed #cbd5e1; border-radius: 8px; cursor: pointer; text-align: center; background: #fff; }
+    .file-drop:hover, .file-drop:focus-within { border-color: #2d5b3e; background: #f4f9f6; }
+    .file-drop input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .file-drop-text { font-weight: 600; font-size: 0.9rem; color: #2d5b3e; }
+    .file-drop-name { font-size: 0.8rem; color: #71717a; overflow-wrap: anywhere; }
+    .file-preview { width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; }
+    .file-card .hint { font-size: 0.8rem; color: #71717a; }
     .pill-file { background: #e0f2fe; color: #075985; margin-left: 4px; }
     .file-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .file-sep { width: 1px; height: 18px; background: #d4d4d8; display: inline-block; }
@@ -729,14 +743,63 @@
           ...FILE_FIELDS.map((f) => ({ ...f, hint: "Your file goes to an admin for approval." }))];
       }
 
-      document.getElementById("form-fields").innerHTML = fields.map((f) => {
+      const gridFields = fields.filter((f) => f.type !== "file");
+      const fileFields = fields.filter((f) => f.type === "file");
+      document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
           : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
         return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
-      }).join("");
+      }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
+      wireFileInputs();
       modal.hidden = false;
       document.getElementById(mode === "create" ? "f-walk_key" : "f-Route_Name")?.focus();
+    }
+
+    // Files panel in the edit and request dialogs: one card each for the GPX route and the photo
+    function fileFilesPanelHtml(mode, fileFields, walk) {
+      if (!fileFields.length) return "";
+      const cards = fileFields.map((f) => {
+        const current = str(walk?.[f.nameKey || f.key]);
+        const isGpx = f.key === "GPX";
+        const hint = mode === "request"
+          ? "Sent to an admin for approval."
+          : isGpx ? "GPX route, up to 2 MB." : "Resized automatically for the website.";
+        return `<div class="file-card">
+          <div class="file-card-head">
+            <span>${isGpx ? "GPX route" : "Walk photo"}</span>
+            <span class="file-status ${current ? "has" : ""}">${current ? escapeHtml(current) : "No file yet"}</span>
+          </div>
+          <label class="file-drop">
+            <input type="file" id="f-${f.key}" accept="${escapeHtml(f.accept || "")}" />
+            <span class="file-drop-text">${isGpx ? "Choose a GPX file" : "Choose a photo"}</span>
+            <span class="file-drop-name" id="f-${f.key}-chosen">${isGpx ? "Click to choose a .gpx file" : "JPG or PNG"}</span>
+          </label>
+          ${current ? `<label class="file-remove"><input type="checkbox" id="f-${f.key}-remove" /> Remove current file</label>` : ""}
+          <div class="hint">${hint}</div>
+        </div>`;
+      }).join("");
+      return `<div class="file-panel"><div class="file-panel-title">Files</div><div class="file-cards">${cards}</div></div>`;
+    }
+
+    // Shows the chosen file name, and a preview for a photo
+    function wireFileInputs() {
+      document.querySelectorAll("#form-fields input[type=file]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const file = input.files?.[0];
+          const chosen = document.getElementById(`${input.id}-chosen`);
+          if (chosen) chosen.textContent = file ? file.name : (input.id === "f-GPX" ? "Click to choose a .gpx file" : "JPG or PNG");
+          const card = input.closest(".file-card");
+          card.querySelector(".file-preview")?.remove();
+          if (file && input.id === "f-Photo") {
+            const img = document.createElement("img");
+            img.className = "file-preview";
+            img.alt = "Selected photo preview";
+            img.src = URL.createObjectURL(file);
+            card.insertBefore(img, card.querySelector(".file-drop"));
+          }
+        });
+      });
     }
 
     function closeDialog() {
