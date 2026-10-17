@@ -40,6 +40,12 @@
     }
 
     .page { width: 100%; max-width: 1200px; }
+    .page-header { position: relative; padding-left: 120px; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+    .page-logo { position: absolute; top: 0; left: 0; height: 100px; width: auto; }
+    @media (max-width: 600px) {
+      .page-header { padding-left: 0; min-height: 0; display: block; }
+      .page-logo { position: static; display: block; height: 100px; margin: 0 auto 8px; }
+    }
     .page-header { text-align: center; margin-bottom: 24px; }
     .page-header h1 { margin: 0 0 6px; font-size: 1.8rem; color: var(--primary); }
     .page-header p { margin: 0; color: var(--text-muted); }
@@ -146,6 +152,24 @@
       font-weight: 600;
     }
     .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
+    .file-remove { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-top: 4px; }
+    .file-panel { grid-column: 1 / -1; border: 1px solid var(--border, #e4e4e7); border-radius: 10px; padding: 14px; background: #fafafa; }
+    .file-panel-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; }
+    .file-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .file-card { background: #fff; border: 1px solid #e4e4e7; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .file-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
+    .file-status { font-size: 0.8rem; font-weight: 500; color: #71717a; text-align: right; overflow-wrap: anywhere; }
+    .file-status.has { color: #166534; }
+    .file-drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 10px; border: 2px dashed #cbd5e1; border-radius: 8px; cursor: pointer; text-align: center; background: #fff; }
+    .file-drop:hover, .file-drop:focus-within { border-color: #2d5b3e; background: #f4f9f6; }
+    .file-drop input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .file-drop-text { font-weight: 600; font-size: 0.9rem; color: #2d5b3e; }
+    .file-drop-name { font-size: 0.8rem; color: #71717a; overflow-wrap: anywhere; }
+    .file-preview { width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; }
+    .file-card .hint { font-size: 0.8rem; color: #71717a; }
+    .pill-file { background: #e0f2fe; color: #075985; margin-left: 4px; }
+    .file-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .file-sep { width: 1px; height: 18px; background: #d4d4d8; display: inline-block; }
     .pill-approved { background: var(--green-bg); color: var(--green-text); }
     .pill-rejected { background: #fee2e2; color: var(--red); }
     .grade { font-weight: 700; }
@@ -205,6 +229,7 @@
 <body>
   <div class="page">
     <header class="page-header">
+      <img class="page-logo" src="data:image/png;base64,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" alt="Costa Blanca Mountain Walkers logo" />
       <h1 id="page-title">Walks Database</h1>
       <p id="page-subtitle"></p>
     </header>
@@ -281,7 +306,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     /* ========================================================= SETUP ========================================================= */
@@ -361,6 +386,11 @@
     ];
     // Leader view (details and change requests) does not show the last walked / last offered history
     const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
+    // File uploads: shown in the edit and request forms. The walk record keeps the file name; the file itself is stored beside it.
+    const FILE_FIELDS = [
+      { key: "GPX", nameKey: "GPX_Name", type: "file", label: "GPX route file", accept: ".gpx,application/gpx+xml,text/xml" },
+      { key: "Photo", nameKey: "Photo_Name", type: "file", label: "Walk photo (resized automatically)", accept: "image/*" },
+    ];
     // The walk key is the database key, e.g. walk_025. Bookings store it as walk_number.
     const ID_FIELD = { key: "walk_key", label: "Walk key", required: true, hint: "e.g. walk_610. Bookings use this as walk number." };
     const LABELS = Object.fromEntries([ID_FIELD, ...EDITABLE_FIELDS].map((f) => [f.key, f.label]));
@@ -404,10 +434,77 @@
     // Blank optional values are stored as null so Firebase removes them
     const toStored = (v) => String(v ?? "");
 
+    /* ========================================================= FILES (GPX and photo) =========================================================
+       GPX routes are stored as text at walk_gpx/{walk key}; photos as resized JPEG data at walk_photos/{walk key}.
+       Leader change requests carry the file contents; an empty GPX_Text or Photo_Data means "remove the file". */
+    const MAX_GPX_CHARS = 2000000;
+    const PHOTO_MAX_EDGE = 1600;
+    const PHOTO_MAX_CHARS = 1000000;
+
+    async function saveFileNode(walkId, path, node) {
+      const target = ref(walksDb, `${path}/${walkId}`);
+      if (node === null) return remove(target);
+      return set(target, node);
+    }
+
+    async function photoToDataUrl(file) {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      if (bitmap.close) bitmap.close();
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      if (dataUrl.length > PHOTO_MAX_CHARS) throw new Error("That photo is still too large after resizing. Try a smaller picture.");
+      return dataUrl;
+    }
+
+    // Reads the chosen files. Returns only what changed: gpx / photo are { name, text|data } or { remove: true }
+    // namesOnly (leader requests): only the file names are recorded; the admin adds the files themselves
+    async function readFileChanges(namesOnly = false) {
+      const out = {};
+      if (document.getElementById("f-GPX-remove")?.checked) out.gpx = { remove: true };
+      const gpxFile = document.getElementById("f-GPX")?.files?.[0];
+      if (gpxFile) {
+        if (!/\.gpx$/i.test(gpxFile.name)) throw new Error("The route file must be a .gpx file.");
+        if (namesOnly) {
+          out.gpx = { name: gpxFile.name };
+        } else {
+          const text = await gpxFile.text();
+          if (new TextEncoder().encode(text).length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
+          if (!/<gpx[\s>]/i.test(text)) throw new Error("That file does not look like a GPX route.");
+          out.gpx = { name: gpxFile.name, text };
+        }
+      }
+      if (document.getElementById("f-Photo-remove")?.checked) out.photo = { remove: true };
+      const photoFile = document.getElementById("f-Photo")?.files?.[0];
+      if (photoFile) {
+        if (!photoFile.type.startsWith("image/")) throw new Error("The photo must be an image file.");
+        out.photo = namesOnly ? { name: photoFile.name } : { name: photoFile.name, data: await photoToDataUrl(photoFile) };
+      }
+      return out;
+    }
+
+    // The walk-record fields that hold the file names
+    function fileNameFields(fc) {
+      const out = {};
+      if (fc.gpx) out.GPX_Name = fc.gpx.remove ? "" : fc.gpx.name;
+      if (fc.photo) out.Photo_Name = fc.photo.remove ? "" : fc.photo.name;
+      return out;
+    }
+
+    // Writes the file contents for an admin save (or an approved request)
+    async function saveFileChanges(walkId, fc) {
+      const now = new Date().toISOString();
+      if (fc.gpx) await saveFileNode(walkId, "walk_gpx", fc.gpx.remove ? null : { name: fc.gpx.name, text: fc.gpx.text, updated_at: now });
+      if (fc.photo) await saveFileNode(walkId, "walk_photos", fc.photo.remove ? null : { name: fc.photo.name, data: fc.photo.data, updated_at: now });
+    }
+
     /* ========================================================= RENDER ========================================================= */
     function setupPage() {
       const titles = {
-        walker: ["Walks Database", "Read-only list of walk routes."],
+        walker: ["Walks Database", ""],
         leader: ["Walks Database", "Browse the walks. You can request a change to any walk; an admin approves it first."],
         admin: ["Walks Database", "Add, edit or remove walks, and approve or reject change requests."],
       };
@@ -426,7 +523,32 @@
         leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
     }
 
+    // Small markers in the walk name cell, so files show in the list as well as the edit dialog
+    function fileBadges(walk) {
+      const parts = [];
+      if (str(walk.GPX_Name)) parts.push(`<span class="pill pill-file" title="${escapeHtml(walk.GPX_Name)}">GPX</span>`);
+      if (str(walk.Photo_Name)) parts.push(`<span class="pill pill-file" title="${escapeHtml(walk.Photo_Name)}">Photo</span>`);
+      return parts.length ? ` ${parts.join(" ")}` : "";
+    }
+
     function detailGridHtml(walk) {
+      // Files: the names are on the walk record; the contents load only when asked for
+      const fileCell = (() => {
+        const gpx = str(walk.GPX_Name);
+        const photo = str(walk.Photo_Name);
+        return `<div class="wide">
+          <div class="detail-label">Files</div>
+          <div class="detail-value file-links">
+            ${gpx
+              ? `<span>${escapeHtml(gpx)}</span> <button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>`
+              : `<span class="muted">No GPX file</span>`}
+            <span class="file-sep"></span>
+            ${photo
+              ? `<span>${escapeHtml(photo)}</span> <button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>`
+              : `<span class="muted">No photo</span>`}
+          </div>
+        </div>`;
+      })();
       const cell = (f) => {
         const value = str(walk[f.key]);
         const shown = !value ? '<span class="muted">–</span>'
@@ -443,7 +565,7 @@
         "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
       const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
-      return `<div class="detail-grid">${fields.map(cell).join("")}</div>`;
+      return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
     }
 
     function renderTable() {
@@ -454,7 +576,9 @@
         if (!term) return true;
         return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
       });
-      document.getElementById("empty-note").hidden = rows.length > 0;
+      const emptyNote = document.getElementById("empty-note");
+      emptyNote.textContent = walks.length ? "No walks match the current filters." : "No walks in the database yet.";
+      emptyNote.hidden = rows.length > 0;
 
       const html = [];
       for (const w of rows) {
@@ -476,7 +600,7 @@
             </button>
           </td>
           <td class="walk-id">${escapeHtml(w.id)}</td>
-          <td>${escapeHtml(w.Route_Name) || "–"}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
+          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
           <td>${escapeHtml(w.Pueblo) || "–"}</td>
           <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
           <td>${escapeHtml(w.Distance) || "–"}</td>
@@ -493,10 +617,20 @@
     }
 
     function changeListHtml(request) {
-      return `<ul class="change-list">${Object.entries(request.changes || {}).map(([key, after]) => {
+      const changes = request.changes || {};
+      const lines = Object.entries(changes).filter(([key]) => key !== "GPX_Text" && key !== "Photo_Data").map(([key, after]) => {
         const before = request.before?.[key];
-        return `<li><strong>${escapeHtml(LABELS[key] || key)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
-      }).join("")}</ul>`;
+        const label = { GPX_Name: "GPX file name", Photo_Name: "Photo file name" }[key] || LABELS[key] || key;
+        return `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(before || "(blank)")} → ${escapeHtml(after || "(blank)")}</li>`;
+      });
+      // Files are checked by name and downloaded or viewed on demand, never shown as raw data
+      if (changes.GPX_Text) {
+        lines.push(`<li><strong>GPX file:</strong> ${escapeHtml(changes.GPX_Name || "route.gpx")} <button type="button" class="btn btn-small" data-action="review-gpx" data-request="${escapeHtml(request.request_id)}">Download</button></li>`);
+      }
+      if (changes.Photo_Data) {
+        lines.push(`<li><strong>Photo:</strong> ${escapeHtml(changes.Photo_Name || "photo.jpg")} <button type="button" class="btn btn-small" data-action="review-photo" data-request="${escapeHtml(request.request_id)}">View</button></li>`);
+      }
+      return `<ul class="change-list">${lines.join("")}</ul>`;
     }
 
     function renderPending() {
@@ -574,6 +708,12 @@
         control = `<select id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}><option value="" ${current ? "" : "selected"}>–</option>${options}</select>`;
       } else if (field.type === "textarea") {
         control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
+      } else if (field.type === "file") {
+        const current = str(value);
+        control = `<input id="${id}" name="${field.key}" type="file" accept="${escapeHtml(field.accept || "")}" ${disabled ? "disabled" : ""} />
+          ${current
+            ? `<label class="file-remove"><input type="checkbox" id="${id}-remove" /> Remove current file (${escapeHtml(current)})</label>`
+            : `<div class="hint">No file attached yet.</div>`}`;
       } else {
         const type = "text";
         control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
@@ -598,27 +738,77 @@
         title.textContent = "Add walk";
         lede.textContent = "Creates a new walk in the walks database.";
         submit.textContent = "Add walk";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else if (mode === "edit") {
         title.textContent = `Edit walk ${walk.id}`;
         lede.textContent = "Changes apply straight away.";
         submit.textContent = "Save changes";
-        fields = [ID_FIELD, ...EDITABLE_FIELDS];
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else {
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
         submit.textContent = "Send request";
-        fields = EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key));
+        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)),
+          ...FILE_FIELDS.map((f) => ({ ...f, hint: "Your file goes to an admin for approval." }))];
       }
 
-      document.getElementById("form-fields").innerHTML = fields.map((f) => {
+      const gridFields = fields.filter((f) => f.type !== "file");
+      const fileFields = fields.filter((f) => f.type === "file");
+      document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
-          : (f.key === "walk_key" ? walk.id : str(walk?.[f.key]));
+          : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
         return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
-      }).join("");
+      }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
+      wireFileInputs();
       modal.hidden = false;
       document.getElementById(mode === "create" ? "f-walk_key" : "f-Route_Name")?.focus();
+    }
+
+    // Files panel in the edit and request dialogs: one card each for the GPX route and the photo
+    function fileFilesPanelHtml(mode, fileFields, walk) {
+      if (!fileFields.length) return "";
+      const cards = fileFields.map((f) => {
+        const current = str(walk?.[f.nameKey || f.key]);
+        const isGpx = f.key === "GPX";
+        const hint = mode === "request"
+          ? "Sent to an admin for approval."
+          : isGpx ? "GPX route, up to 2 MB." : "Resized automatically for the website.";
+        return `<div class="file-card">
+          <div class="file-card-head">
+            <span>${isGpx ? "GPX route" : "Walk photo"}</span>
+            <span class="file-status ${current ? "has" : ""}">${current ? escapeHtml(current) : "No file yet"}</span>
+          </div>
+          <label class="file-drop">
+            <input type="file" id="f-${f.key}" accept="${escapeHtml(f.accept || "")}" />
+            <span class="file-drop-text">${isGpx ? "Choose a GPX file" : "Choose a photo"}</span>
+            <span class="file-drop-name" id="f-${f.key}-chosen">${isGpx ? "Click to choose a .gpx file" : "Any image file"}</span>
+          </label>
+          ${current ? `<label class="file-remove"><input type="checkbox" id="f-${f.key}-remove" /> Remove current file</label>` : ""}
+          <div class="hint">${hint}</div>
+        </div>`;
+      }).join("");
+      return `<div class="file-panel"><div class="file-panel-title">Files</div><div class="file-cards">${cards}</div></div>`;
+    }
+
+    // Shows the chosen file name, and a preview for a photo
+    function wireFileInputs() {
+      document.querySelectorAll("#form-fields input[type=file]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const file = input.files?.[0];
+          const chosen = document.getElementById(`${input.id}-chosen`);
+          if (chosen) chosen.textContent = file ? file.name : (input.id === "f-GPX" ? "Click to choose a .gpx file" : "Any image file");
+          const card = input.closest(".file-card");
+          card.querySelector(".file-preview")?.remove();
+          if (file && input.id === "f-Photo") {
+            const img = document.createElement("img");
+            img.className = "file-preview";
+            img.alt = "Selected photo preview";
+            img.src = URL.createObjectURL(file);
+            card.insertBefore(img, card.querySelector(".file-drop"));
+          }
+        });
+      });
     }
 
     function closeDialog() {
@@ -667,16 +857,27 @@
       const record = readForm(mode);
       if (!record) return;
 
+      let files;
+      try {
+        files = await readFileChanges();
+      } catch (err) {
+        return showError(err.message);
+      }
+
       try {
         if (mode === "create") {
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          Object.assign(data, fileNameFields(files));
           await set(ref(walksDb, "walks/" + record.walk_key), data);
+          await saveFileChanges(record.walk_key, files);
         } else if (mode === "edit") {
           // update() keeps any fields this page does not manage
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
+          Object.assign(data, fileNameFields(files));
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
+          await saveFileChanges(dialogWalk.id, files);
         } else {
           const current = dialogWalk;
           const changes = {};
@@ -688,6 +889,15 @@
               changes[f.key] = record[f.key];
               before[f.key] = was;
             }
+          }
+          // Files travel inside the request for approval; an empty GPX_Text or Photo_Data means "remove the file"
+          if (files.gpx) {
+            changes.GPX_Name = files.gpx.remove ? "" : files.gpx.name;
+            changes.GPX_Text = files.gpx.remove ? "" : files.gpx.text;
+          }
+          if (files.photo) {
+            changes.Photo_Name = files.photo.remove ? "" : files.photo.name;
+            changes.Photo_Data = files.photo.remove ? "" : files.photo.data;
           }
           if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
           if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
@@ -736,6 +946,7 @@
       const walk = walkById(btn.dataset.id);
       if (!walk) return;
 
+      if (btn.dataset.action === "download-gpx" || btn.dataset.action === "view-photo") return openWalkFile(walk.id, btn.dataset.action);
       if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
       if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
       if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
@@ -744,11 +955,13 @@
         const pending = pendingFor(walk.id).length;
         const notes = [];
         if (used) notes.push(`${used} walk booking(s) use this walk number. They will no longer link to a route.`);
-        if (pending) notes.push(`${pending} change request(s) for this walk will be left waiting and cannot be approved.`);
+        if (pending) notes.push(`${pending} change request(s) for this walk will also be deleted.`);
         const message = `Delete walk ${walk.id} (${walk.Route_Name || "no name"})?${notes.length ? "\n\n" + notes.join("\n") : ""}`;
         if (!confirm(message)) return;
         try {
           await remove(ref(walksDb, "walks/" + walk.id));
+          await Promise.all([remove(ref(walksDb, "walk_gpx/" + walk.id)), remove(ref(walksDb, "walk_photos/" + walk.id))]).catch(() => {});
+          await Promise.all(pendingFor(walk.id).map((r) => remove(ref(walksDb, "walk_requests/" + r.request_id)))).catch(() => {});
           expandedWalks.delete(walk.id);
         } catch (err) {
           console.error("Delete failed:", err);
@@ -756,6 +969,32 @@
         }
       }
     });
+
+    // Loads a walk's GPX or photo from the database, only when asked for
+    async function openWalkFile(walkId, action) {
+      try {
+        if (action === "download-gpx") {
+          const file = (await get(ref(walksDb, "walk_gpx/" + walkId))).val();
+          if (!file || !file.text) return alert("The GPX file could not be found.");
+          const url = URL.createObjectURL(new Blob([file.text], { type: "application/gpx+xml" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name || `${walkId}.gpx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } else {
+          const photo = (await get(ref(walksDb, "walk_photos/" + walkId))).val();
+          if (!photo || !photo.data) return alert("The photo could not be found.");
+          const blob = await (await fetch(photo.data)).blob();
+          window.open(URL.createObjectURL(blob), "_blank", "noopener");
+        }
+      } catch (err) {
+        console.error("Could not open the file:", err);
+        alert("Could not open the file. Check the database connection.");
+      }
+    }
 
     function toggleWalk(id) {
       if (expandedWalks.has(id)) expandedWalks.delete(id);
@@ -770,14 +1009,48 @@
       const request = requests[btn.dataset.request];
       if (!request || request.status !== "pending") return;
 
+      if (btn.dataset.action === "review-gpx" || btn.dataset.action === "review-photo") {
+        const c = request.changes || {};
+        try {
+        if (btn.dataset.action === "review-gpx") {
+          const url = URL.createObjectURL(new Blob([c.GPX_Text], { type: "application/gpx+xml" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = c.GPX_Name || "route.gpx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } else {
+          const blob = await (await fetch(c.Photo_Data)).blob();
+          window.open(URL.createObjectURL(blob), "_blank", "noopener");
+        }
+        } catch (err) {
+          console.error("Could not open the file:", err);
+          alert("Could not open the file. Check the database connection.");
+        }
+        return;
+      }
+
       try {
         if (btn.dataset.action === "approve") {
           const walk = walkById(request.walk_id);
           if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
+          const fileKeys = ["GPX_Text", "GPX_Name", "Photo_Data", "Photo_Name"];
+          const changedSince = Object.keys(request.changes || {})
+            .filter((k) => !fileKeys.includes(k) && request.before && str(walkById(request.walk_id)?.[k]) !== str(request.before[k]));
+          if (changedSince.length && !confirm(`This walk has changed since this request was sent (${changedSince.join(", ")}). Approve anyway?`)) return;
           if (!confirm(`Approve this change to walk ${walk.id}?`)) return;
           const data = {};
-          for (const [key, value] of Object.entries(request.changes || {})) data[key] = toStored(value);
+          const fileWrites = [];
+          const now = new Date().toISOString();
+          for (const [key, value] of Object.entries(request.changes || {})) {
+            if (key === "GPX_Text") fileWrites.push(saveFileNode(request.walk_id, "walk_gpx", value ? { name: request.changes.GPX_Name || "", text: value, updated_at: now } : null));
+            else if (key === "Photo_Data") fileWrites.push(saveFileNode(request.walk_id, "walk_photos", value ? { name: request.changes.Photo_Name || "", data: value, updated_at: now } : null));
+            else data[key] = toStored(value);
+          }
           await update(ref(walksDb, "walks/" + request.walk_id), data);
+          await Promise.all(fileWrites);
           await update(ref(walksDb, "walk_requests/" + request.request_id), {
             status: "approved",
             reviewed_at: new Date().toISOString(),
