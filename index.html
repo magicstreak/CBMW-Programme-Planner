@@ -465,7 +465,7 @@
           out.gpx = { name: gpxFile.name };
         } else {
           const text = await gpxFile.text();
-          if (text.length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
+          if (new TextEncoder().encode(text).length > MAX_GPX_CHARS) throw new Error("The GPX file is too large (over 2 MB).");
           if (!/<gpx[\s>]/i.test(text)) throw new Error("That file does not look like a GPX route.");
           out.gpx = { name: gpxFile.name, text };
         }
@@ -569,7 +569,9 @@
         if (!term) return true;
         return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
       });
-      document.getElementById("empty-note").hidden = rows.length > 0;
+      const emptyNote = document.getElementById("empty-note");
+      emptyNote.textContent = walks.length ? "No walks match the current filters." : "No walks in the database yet.";
+      emptyNote.hidden = rows.length > 0;
 
       const html = [];
       for (const w of rows) {
@@ -773,7 +775,7 @@
           <label class="file-drop">
             <input type="file" id="f-${f.key}" accept="${escapeHtml(f.accept || "")}" />
             <span class="file-drop-text">${isGpx ? "Choose a GPX file" : "Choose a photo"}</span>
-            <span class="file-drop-name" id="f-${f.key}-chosen">${isGpx ? "Click to choose a .gpx file" : "JPG or PNG"}</span>
+            <span class="file-drop-name" id="f-${f.key}-chosen">${isGpx ? "Click to choose a .gpx file" : "Any image file"}</span>
           </label>
           ${current ? `<label class="file-remove"><input type="checkbox" id="f-${f.key}-remove" /> Remove current file</label>` : ""}
           <div class="hint">${hint}</div>
@@ -788,7 +790,7 @@
         input.addEventListener("change", () => {
           const file = input.files?.[0];
           const chosen = document.getElementById(`${input.id}-chosen`);
-          if (chosen) chosen.textContent = file ? file.name : (input.id === "f-GPX" ? "Click to choose a .gpx file" : "JPG or PNG");
+          if (chosen) chosen.textContent = file ? file.name : (input.id === "f-GPX" ? "Click to choose a .gpx file" : "Any image file");
           const card = input.closest(".file-card");
           card.querySelector(".file-preview")?.remove();
           if (file && input.id === "f-Photo") {
@@ -946,12 +948,13 @@
         const pending = pendingFor(walk.id).length;
         const notes = [];
         if (used) notes.push(`${used} walk booking(s) use this walk number. They will no longer link to a route.`);
-        if (pending) notes.push(`${pending} change request(s) for this walk will be left waiting and cannot be approved.`);
+        if (pending) notes.push(`${pending} change request(s) for this walk will also be deleted.`);
         const message = `Delete walk ${walk.id} (${walk.Route_Name || "no name"})?${notes.length ? "\n\n" + notes.join("\n") : ""}`;
         if (!confirm(message)) return;
         try {
           await remove(ref(walksDb, "walks/" + walk.id));
           await Promise.all([remove(ref(walksDb, "walk_gpx/" + walk.id)), remove(ref(walksDb, "walk_photos/" + walk.id))]).catch(() => {});
+          await Promise.all(pendingFor(walk.id).map((r) => remove(ref(walksDb, "walk_requests/" + r.request_id)))).catch(() => {});
           expandedWalks.delete(walk.id);
         } catch (err) {
           console.error("Delete failed:", err);
@@ -1001,6 +1004,7 @@
 
       if (btn.dataset.action === "review-gpx" || btn.dataset.action === "review-photo") {
         const c = request.changes || {};
+        try {
         if (btn.dataset.action === "review-gpx") {
           const url = URL.createObjectURL(new Blob([c.GPX_Text], { type: "application/gpx+xml" }));
           const a = document.createElement("a");
@@ -1014,6 +1018,10 @@
           const blob = await (await fetch(c.Photo_Data)).blob();
           window.open(URL.createObjectURL(blob), "_blank", "noopener");
         }
+        } catch (err) {
+          console.error("Could not open the file:", err);
+          alert("Could not open the file. Check the database connection.");
+        }
         return;
       }
 
@@ -1021,6 +1029,10 @@
         if (btn.dataset.action === "approve") {
           const walk = walkById(request.walk_id);
           if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
+          const fileKeys = ["GPX_Text", "GPX_Name", "Photo_Data", "Photo_Name"];
+          const changedSince = Object.keys(request.changes || {})
+            .filter((k) => !fileKeys.includes(k) && request.before && str(walkById(request.walk_id)?.[k]) !== str(request.before[k]));
+          if (changedSince.length && !confirm(`This walk has changed since this request was sent (${changedSince.join(", ")}). Approve anyway?`)) return;
           if (!confirm(`Approve this change to walk ${walk.id}?`)) return;
           const data = {};
           const fileWrites = [];
