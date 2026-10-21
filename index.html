@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Map view: Leaflet -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
       --primary: #2d5b3e;
@@ -132,6 +135,17 @@
     .chev .chev-up { display: none; }
     .chev[aria-expanded="true"] .chev-up { display: block; }
     .chev[aria-expanded="true"] .chev-down { display: none; }
+    /* List / Map toggle */
+    .view-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .walks-map-panel { margin-top: 12px; }
+    #walks-map {
+      width: 100%;
+      height: max(480px, calc(100vh - 280px));
+      border-radius: 12px;
+      border: 1px solid #e4e4e7;
+      overflow: hidden;
+    }
+    @media (max-width: 600px) { #walks-map { height: max(380px, calc(100vh - 300px)); } }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .walk-id { font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap; }
     .muted { color: var(--text-muted); }
@@ -251,6 +265,10 @@
             <select id="leader-picker" aria-label="Choose your leader ID"></select>
           </div>
         </div>
+        <div class="toolbar-group" role="group" aria-label="Show walks as">
+          <button type="button" class="btn view-btn" data-walks-view="table" aria-pressed="true">List</button>
+          <button type="button" class="btn view-btn" data-walks-view="map" aria-pressed="false">Map</button>
+        </div>
         <div class="toolbar-group">
           <button type="button" class="btn btn-primary" id="add-walk" hidden>+ Add walk</button>
         </div>
@@ -285,6 +303,10 @@
         </table>
       </div>
       <p class="empty" id="empty-note" hidden>No walks match the current filters.</p>
+      <section class="walks-map-panel" id="walks-map-panel" hidden>
+        <p class="muted" id="walks-map-note" aria-live="polite"></p>
+        <div id="walks-map" role="region" aria-label="Map of walk locations"></div>
+      </section>
     </main>
   </div>
 
@@ -568,14 +590,19 @@
       return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
     }
 
-    function renderTable() {
+    // The walks that match the search and grade filters. Used by both the list and the map.
+    function filterWalks() {
       const term = str(document.getElementById("search").value).toLowerCase();
       const grade = document.getElementById("grade-filter").value;
-      const rows = walks.filter((w) => {
+      return walks.filter((w) => {
         if (grade && str(w.Grade) !== grade) return false;
         if (!term) return true;
         return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
       });
+    }
+
+    function renderTable() {
+      const rows = filterWalks();
       const emptyNote = document.getElementById("empty-note");
       emptyNote.textContent = walks.length ? "No walks match the current filters." : "No walks in the database yet.";
       emptyNote.hidden = rows.length > 0;
@@ -614,6 +641,12 @@
       }
       document.getElementById("walks-body").innerHTML = html.join("");
       renderPicker();
+      // In Map view the list is hidden and the map shows the same filtered walks
+      document.querySelector(".table-wrap").hidden = walksView === "map";
+      if (walksView === "map") {
+        emptyNote.hidden = true;
+        renderMap();
+      }
     }
 
     function changeListHtml(request) {
@@ -671,6 +704,59 @@
       renderPending();
       renderMyRequests();
     }
+
+    /* ========================================================= LIST / MAP VIEW ========================================================= */
+    let walksView = "table";
+    let walksMap = null;
+    let walksMapLayer = null;
+
+    // Pins for the filtered walks that have coordinates. Each pin shows the walk's details in a popup.
+    function renderMap() {
+      if (walksView !== "map") return;
+      const note = document.getElementById("walks-map-note");
+      if (typeof L === "undefined") {
+        note.textContent = "The map needs an internet connection to load.";
+        return;
+      }
+      // Build a fresh map each time, so it is sized while its panel is visible
+      if (walksMap) { walksMap.remove(); walksMap = null; walksMapLayer = null; }
+      walksMap = L.map("walks-map").setView([38.8, 0.05], 9);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(walksMap);
+      walksMapLayer = L.layerGroup().addTo(walksMap);
+
+      const points = [];
+      let missing = 0;
+      for (const w of filterWalks()) {
+        const lat = Number(str(w.Latitude));
+        const lon = Number(str(w.Longitude));
+        if (!str(w.Latitude) || !str(w.Longitude) || !Number.isFinite(lat) || !Number.isFinite(lon)) { missing += 1; continue; }
+        const details = [w.Grade, w.Distance, w.Ascent].map(str).filter(Boolean).map(escapeHtml).join(" · ");
+        const popup = `<strong>${escapeHtml(w.id)}</strong><br>${escapeHtml(str(w.Route_Name))}${details ? `<br>${details}` : ""}${str(w.Pueblo) ? `<br>${escapeHtml(w.Pueblo)}` : ""}`;
+        L.marker([lat, lon]).bindPopup(popup).addTo(walksMapLayer);
+        points.push([lat, lon]);
+      }
+      // Measure and centre once visible, and again shortly after
+      const fit = () => {
+        walksMap.invalidateSize();
+        if (points.length) walksMap.fitBounds(points, { padding: [30, 30], maxZoom: 12 });
+      };
+      fit();
+      setTimeout(fit, 150);
+      const shown = `${points.length} walk${points.length === 1 ? "" : "s"} on the map.`;
+      note.textContent = missing ? `${shown} ${missing} without coordinates are not shown.` : shown;
+    }
+
+    function setWalksView(mode) {
+      walksView = mode;
+      document.querySelectorAll("[data-walks-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.walksView === mode)));
+      document.getElementById("walks-map-panel").hidden = mode !== "map";
+      renderTable();
+    }
+
+    window.addEventListener("resize", () => { if (walksMap && walksView === "map") walksMap.invalidateSize(); });
 
     /* ========================================================= DIALOG ========================================================= */
     const modal = document.getElementById("walk-modal");
@@ -928,6 +1014,7 @@
     document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
     document.getElementById("search").addEventListener("input", renderTable);
     document.getElementById("grade-filter").addEventListener("change", renderTable);
+    document.querySelectorAll("[data-walks-view]").forEach((b) => b.addEventListener("click", () => setWalksView(b.dataset.walksView)));
     document.getElementById("leader-picker").addEventListener("change", (e) => {
       myLeaderId = e.target.value;
       renderAll();
