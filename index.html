@@ -601,6 +601,18 @@
       });
     }
 
+    // Leaders may request changes only to walks they lead, or to walks with no valid leader yet
+    // (so they can take it on). A valid leader is one whose full name is in the leaders list.
+    function canRequestChange(w) {
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      const myName = me ? fullName(me) : "";
+      const current = str(w.Leader);
+      const validNames = new Set(leaders.map(fullName));
+      const unassigned = !current || !validNames.has(current);
+      if (!myName) return false; // nobody selected: no request buttons
+      return unassigned || current === myName;
+    }
+
     function renderTable() {
       const rows = filterWalks();
       const emptyNote = document.getElementById("empty-note");
@@ -615,7 +627,7 @@
         if (isAdmin) {
           actions.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
           actions.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
-        } else if (isLeader) {
+        } else if (isLeader && canRequestChange(w)) {
           actions.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
         }
 
