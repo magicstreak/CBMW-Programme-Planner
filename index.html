@@ -111,6 +111,10 @@
 
     .table-wrap { overflow-x: auto; }
     .walks-table th.photo-cell, .walks-table td.photo-cell { width: 128px; }
+    .walks-table th.sortable { cursor: pointer; user-select: none; }
+    .walks-table th.sortable:hover, .walks-table th.sortable:focus-visible { color: var(--text, #111827); outline: none; }
+    .walks-table th.sortable .sort-indicator { opacity: 0.6; margin-left: 2px; }
+    .walks-table th.sortable[aria-sort="ascending"] .sort-indicator, .walks-table th.sortable[aria-sort="descending"] .sort-indicator { opacity: 1; color: #1f5a3a; }
     .walk-thumb {
       width: 112px; height: 76px; border-radius: 8px; overflow: hidden; background: #eef2f0;
       display: flex; align-items: center; justify-content: center;
@@ -297,13 +301,13 @@
           <thead>
             <tr>
               <th class="chev-cell"><span class="sr-only">Details</span></th>
-              <th>Walk ID</th>
-              <th>Route</th>
-              <th>Pueblo</th>
-              <th>Grade</th>
-              <th>Distance</th>
-              <th>Ascent</th>
-              <th>Total time</th>
+              <th class="sortable" data-sort="id" tabindex="0" aria-sort="ascending">Walk ID <span class="sort-indicator">↑</span></th>
+              <th class="sortable" data-sort="route" tabindex="0">Route <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-sort="pueblo" tabindex="0">Pueblo <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-sort="grade" tabindex="0">Grade <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-sort="distance" tabindex="0">Distance <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-sort="ascent" tabindex="0">Ascent <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-sort="time" tabindex="0">Total time <span class="sort-indicator">↕</span></th>
               <th class="photo-cell">Photo</th>
               <th id="actions-head" hidden>Actions</th>
             </tr>
@@ -662,8 +666,53 @@
       });
     }
 
+    // Column sorting: click a sortable header to sort; click again to reverse
+    let walkSort = { key: "id", dir: "asc" };
+    const GRADE_RANK = { E: 0, M: 1, MS: 2, S: 3, VS: 4 };
+    function sortValue(w, key) {
+      if (key === "id") return str(w.id);
+      if (key === "route") return str(w.Route_Name).toLowerCase();
+      if (key === "pueblo") return str(w.Pueblo).toLowerCase();
+      if (key === "grade") return GRADE_RANK[str(w.Grade).toUpperCase()] ?? 99;
+      if (key === "distance" || key === "ascent") { const n = parseFloat(str(w[key === "distance" ? "Distance" : "Ascent"]).replace(",", ".")); return Number.isFinite(n) ? n : null; }
+      if (key === "time") { const m = str(w.Total_Time).match(/(\d+)\s*h\s*(\d+)?/i); return m ? Number(m[1]) * 60 + Number(m[2] || 0) : null; }
+      return null;
+    }
+    function sortWalks(rows) {
+      const { key, dir } = walkSort;
+      const mult = dir === "desc" ? -1 : 1;
+      return [...rows].sort((a, b) => {
+        const va = sortValue(a, key), vb = sortValue(b, key);
+        // Empty values always sort to the bottom
+        if (va === null || va === undefined || va === "") return (vb === null || vb === undefined || vb === "") ? 0 : 1;
+        if (vb === null || vb === undefined || vb === "") return -1;
+        if (typeof va === "number" && typeof vb === "number") return (va - vb) * mult;
+        return String(va).localeCompare(String(vb), undefined, { numeric: true }) * mult;
+      });
+    }
+    function updateSortHeaders() {
+      document.querySelectorAll(".walks-table th[data-sort]").forEach((th) => {
+        const active = th.dataset.sort === walkSort.key;
+        th.setAttribute("aria-sort", active ? (walkSort.dir === "desc" ? "descending" : "ascending") : "none");
+        const ind = th.querySelector(".sort-indicator");
+        if (ind) ind.textContent = active ? (walkSort.dir === "desc" ? "↓" : "↑") : "↕";
+      });
+    }
+    function setWalkSort(key) {
+      walkSort = walkSort.key === key
+        ? { key, dir: walkSort.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" };
+      updateSortHeaders();
+      renderTable();
+    }
+    document.querySelectorAll(".walks-table th[data-sort]").forEach((th) => {
+      th.addEventListener("click", () => setWalkSort(th.dataset.sort));
+      th.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setWalkSort(th.dataset.sort); } });
+    });
+    updateSortHeaders();
+
     function renderTable() {
-      const rows = filterWalks();
+      const rows = sortWalks(filterWalks());
       const emptyNote = document.getElementById("empty-note");
       emptyNote.textContent = walks.length ? "No walks match the current filters." : "No walks in the database yet.";
       emptyNote.hidden = rows.length > 0;
