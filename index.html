@@ -264,6 +264,7 @@
       <div class="toolbar">
         <div class="toolbar-group">
           <input type="search" id="search" placeholder="Search walk ID, route, pueblo or grade" aria-label="Search walks" />
+          <select id="leader-filter" aria-label="Filter by leader" hidden></select>
           <select id="grade-filter" aria-label="Filter by grade">
             <option value="">All grades</option>
             <option value="E">E</option>
@@ -604,11 +605,32 @@
     }
 
     // The walks that match the search and grade filters. Used by both the list and the map.
+    // Leader filter (leader and admin views): options come from the Leader value on the walks
+    let leaderFilterKey = "";
+    function renderLeaderFilter() {
+      const sel = document.getElementById("leader-filter");
+      sel.hidden = VIEW === "walker";
+      if (VIEW === "walker") return;
+      const names = [...new Set(walks.map((w) => str(w.Leader)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+      const hasBlank = walks.some((w) => !str(w.Leader));
+      const key = names.join("|") + (hasBlank ? "|blank" : "");
+      if (key === leaderFilterKey) return;
+      leaderFilterKey = key;
+      const current = sel.value;
+      sel.innerHTML = [`<option value="">All leaders</option>`,
+        ...names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`),
+        hasBlank ? `<option value="__blank__">No leader set</option>` : ""].join("");
+      sel.value = [...sel.options].some((o) => o.value === current) ? current : "";
+    }
     function filterWalks() {
       const term = str(document.getElementById("search").value).toLowerCase();
       const grade = document.getElementById("grade-filter").value;
+      const leaderChoice = document.getElementById("leader-filter").hidden ? "" : document.getElementById("leader-filter").value;
       return walks.filter((w) => {
         if (grade && str(w.Grade) !== grade) return false;
+        if (leaderChoice === "__blank__" && str(w.Leader)) return false;
+        if (leaderChoice && leaderChoice !== "__blank__" && str(w.Leader) !== leaderChoice) return false;
         if (!term) return true;
         return [w.id, w.Route_Name, w.Pueblo, w.Grade].join(" ").toLowerCase().includes(term);
       });
@@ -712,6 +734,7 @@
     updateSortHeaders();
 
     function renderTable() {
+      renderLeaderFilter();
       const rows = sortWalks(filterWalks());
       const emptyNote = document.getElementById("empty-note");
       emptyNote.textContent = walks.length ? "No walks match the current filters." : "No walks in the database yet.";
@@ -1126,6 +1149,7 @@
     document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
     document.getElementById("search").addEventListener("input", renderTable);
     document.getElementById("grade-filter").addEventListener("change", renderTable);
+    document.getElementById("leader-filter").addEventListener("change", renderTable);
     document.querySelectorAll("[data-walks-view]").forEach((b) => b.addEventListener("click", () => setWalksView(b.dataset.walksView)));
     document.getElementById("leader-picker").addEventListener("change", (e) => {
       myLeaderId = e.target.value;
