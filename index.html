@@ -110,6 +110,14 @@
     .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .table-wrap { overflow-x: auto; }
+    .walks-table th.photo-cell, .walks-table td.photo-cell { width: 128px; }
+    .walk-thumb {
+      width: 112px; height: 76px; border-radius: 8px; overflow: hidden; background: #eef2f0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .walk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .walk-thumb-empty { background: linear-gradient(180deg, #dfeee6 0%, #f4f7f2 100%); }
+    .walk-thumb-empty svg { width: 52%; max-width: 64px; height: auto; }
     .walks-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
     .walks-table th, .walks-table td {
       text-align: left;
@@ -296,6 +304,7 @@
               <th>Distance</th>
               <th>Ascent</th>
               <th>Total time</th>
+              <th class="photo-cell">Photo</th>
               <th id="actions-head" hidden>Actions</th>
             </tr>
           </thead>
@@ -613,6 +622,46 @@
       return unassigned || current === myName;
     }
 
+    // Walk photos: the uploaded photo (walk_photos/{walk id}) first, else the walk's Image URL, else a mountain placeholder
+    const WALK_PHOTO_PLACEHOLDER = '<svg viewBox="0 0 120 80" aria-hidden="true" focusable="false"><circle cx="92" cy="22" r="7" fill="#f4d58d"/><path d="M0 80 L34 30 L52 52 L70 26 L120 80 Z" fill="#9dbaa5"/><path d="M20 80 L50 40 L66 60 L84 38 L108 80 Z" fill="#5f8a6e"/><path d="M50 40 L56 48 L50 46 L44 50 Z" fill="#ffffff" opacity="0.85"/><path d="M70 26 L76 34 L70 32 L64 35 Z" fill="#ffffff" opacity="0.85"/></svg>';
+    const walkPhotoCache = new Map();
+    const walkPhotoPending = new Set();
+    function walkThumbHtml(w) {
+      const hasLink = !!String(w.Image_URL || "").trim();
+      const hasUpload = !!String(w.Photo_Name || "").trim();
+      if (!hasLink && !hasUpload) return `<div class="walk-thumb walk-thumb-empty">${WALK_PHOTO_PLACEHOLDER}</div>`;
+      return `<div class="walk-thumb walk-thumb-empty" data-photo-key="${escapeHtml(w.id)}" data-photo-link="${escapeHtml(String(w.Image_URL || ""))}">${WALK_PHOTO_PLACEHOLDER}</div>`;
+    }
+    function applyWalkThumb(el, src) {
+      if (!src) return;
+      const img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      img.onerror = () => { el.classList.add("walk-thumb-empty"); el.innerHTML = WALK_PHOTO_PLACEHOLDER; };
+      img.src = src;
+      el.classList.remove("walk-thumb-empty");
+      el.replaceChildren(img);
+    }
+    function hydrateWalkThumbs() {
+      document.querySelectorAll(".walk-thumb[data-photo-key]").forEach((el) => {
+        const k = el.dataset.photoKey;
+        const link = el.dataset.photoLink || "";
+        if (walkPhotoCache.has(k)) { applyWalkThumb(el, walkPhotoCache.get(k) || link); return; }
+        if (walkPhotoPending.has(k)) return;
+        walkPhotoPending.add(k);
+        const finish = (src) => {
+          walkPhotoCache.set(k, src);
+          document.querySelectorAll(".walk-thumb[data-photo-key]").forEach((node) => {
+            if (node.dataset.photoKey === k) applyWalkThumb(node, src);
+          });
+        };
+        get(ref(walksDb, "walk_photos/" + k)).then((snap) => {
+          const v = snap.val();
+          finish(v && v.data ? String(v.data) : link);
+        }).catch(() => finish(link)).finally(() => walkPhotoPending.delete(k));
+      });
+    }
+
     function renderTable() {
       const rows = filterWalks();
       const emptyNote = document.getElementById("empty-note");
@@ -645,13 +694,15 @@
           <td>${escapeHtml(w.Distance) || "–"}</td>
           <td>${escapeHtml(w.Ascent) || "–"}</td>
           <td>${escapeHtml(w.Total_Time) || "–"}</td>
+          <td class="photo-cell">${walkThumbHtml(w)}</td>
           ${VIEW === "walker" ? "" : `<td class="actions-cell">${actions.join(" ")}</td>`}
         </tr>`);
         if (open) {
-          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 8 : 9}">${detailGridHtml(w)}</td></tr>`);
+          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 9 : 10}">${detailGridHtml(w)}</td></tr>`);
         }
       }
       document.getElementById("walks-body").innerHTML = html.join("");
+      hydrateWalkThumbs();
       renderPicker();
       // In Map view the list is hidden and the map shows the same filtered walks
       document.querySelector(".table-wrap").hidden = walksView === "map";
@@ -1174,7 +1225,7 @@
     function start() {
       setupPage();
       if (!walksDb) {
-        document.getElementById("walks-body").innerHTML = `<tr><td colspan="9" class="empty">The walks database could not be reached.</td></tr>`;
+        document.getElementById("walks-body").innerHTML = `<tr><td colspan="10" class="empty">The walks database could not be reached.</td></tr>`;
         return;
       }
 
