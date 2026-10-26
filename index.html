@@ -103,6 +103,9 @@
     .card h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--primary); }
     .request-item { padding: 10px 0; border-top: 1px solid var(--border); }
     .request-item:first-of-type { border-top: none; }
+    .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; max-height: 180px; overflow-y: auto; border: 1px solid #d6dde6; border-radius: 6px; padding: 8px 10px; }
+    .form-field .check-list .check-item { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.9rem; font-weight: 400; cursor: pointer; }
+    .check-item input[type=checkbox] { width: auto; margin: 0; flex: none; }
     .request-item .who { font-weight: 600; }
     .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
     .change-list { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
@@ -396,7 +399,8 @@
       { key: "Route_Name", label: "Route name", required: true },
       { key: "Pueblo", label: "Pueblo" },
       { key: "Grade", label: "Grade", type: "choice", options: GRADES },
-      { key: "Leader", label: "Leader", type: "choice", source: "leaders" },
+      { key: "Leader", label: "Leader (owner)", type: "choice", source: "leaders" },
+      { key: "Permitted_Leaders", label: "Permitted leaders", type: "multichoice", source: "leaders", full: true, hint: "Other leaders who may lead this walk. The owner is always permitted." },
       { key: "Start_Time", label: "Start time" },
       { key: "Distance", label: "Distance" },
       { key: "Ascent", label: "Ascent" },
@@ -597,7 +601,7 @@
         </div>`;
       };
       // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
-      const WALKER_HIDDEN = ["Leader", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
+      const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
         "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
       const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
@@ -927,6 +931,14 @@
           `<option value="${escapeHtml(v)}" ${v === current ? "selected" : ""}>${escapeHtml(v)}</option>`
         ).join("");
         control = `<select id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}><option value="" ${current ? "" : "selected"}>–</option>${options}</select>`;
+      } else if (field.type === "multichoice") {
+        const chosen = new Set(str(value).split(",").map((v) => v.trim()).filter(Boolean));
+        const names = [...new Set(leaders.map(fullName).filter(Boolean))];
+        for (const c of chosen) if (!names.includes(c)) names.unshift(c);
+        names.sort(byName);
+        control = `<div class="check-list" id="${id}">${names.map((n) =>
+          `<label class="check-item"><input type="checkbox" name="${field.key}" value="${escapeHtml(n)}" ${chosen.has(n) ? "checked" : ""} ${disabled ? "disabled" : ""} /> ${escapeHtml(n)}</label>`
+        ).join("")}</div>`;
       } else if (field.type === "textarea") {
         control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
       } else if (field.type === "file") {
@@ -1049,7 +1061,11 @@
     function readForm(mode) {
       const get = (key) => str(form.elements[key]?.value);
       const record = {};
-      for (const f of EDITABLE_FIELDS) record[f.key] = get(f.key);
+      for (const f of EDITABLE_FIELDS) {
+        record[f.key] = f.type === "multichoice"
+          ? Array.from(document.querySelectorAll(`#form-fields input[name="${f.key}"]:checked`)).map((i) => i.value).join(", ")
+          : get(f.key);
+      }
       if (mode !== "request") record.walk_key = get("walk_key");
 
       if (mode !== "request") {
