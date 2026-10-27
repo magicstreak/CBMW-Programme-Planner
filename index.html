@@ -119,6 +119,7 @@
     .change-list li { margin-bottom: 2px; }
     .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+    .picker-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .table-wrap { overflow-x: auto; }
     .walks-table th.photo-cell, .walks-table td.photo-cell { width: 128px; }
     .walks-table th.sortable { cursor: pointer; user-select: none; }
@@ -270,6 +271,12 @@
       <p id="page-subtitle"></p>
     </header>
 
+    <div id="picker-wrap" class="picker-bar" hidden>
+      <label for="leader-email" class="muted">I am</label>
+      <input id="leader-email" type="email" placeholder="Your email address" aria-label="Your email address" autocomplete="email" />
+      <span id="picker-msg" class="muted" aria-live="polite" hidden></span>
+    </div>
+
     <main class="panel">
       <div class="toolbar">
         <div class="toolbar-group">
@@ -283,10 +290,6 @@
             <option value="S">S</option>
             <option value="VS">VS</option>
           </select>
-          <div id="picker-wrap" class="toolbar-group" hidden>
-            <label for="leader-picker" class="muted">Requesting as</label>
-            <select id="leader-picker" aria-label="Choose your leader ID"></select>
-          </div>
         </div>
         <div class="toolbar-group" role="group" aria-label="Show walks as">
           <button type="button" class="btn view-btn" data-walks-view="table" aria-pressed="true">List</button>
@@ -567,9 +570,28 @@
 
     function renderPicker() {
       if (!isLeader) return;
-      const select = document.getElementById("leader-picker");
-      select.innerHTML = `<option value="" ${myLeaderId ? "" : "selected"} disabled>Choose a leader ID</option>` +
-        leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
+      const msg = document.getElementById("picker-msg");
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      if (me) {
+        msg.hidden = false;
+        msg.textContent = `Showing as ${fullName(me)} (${me.leader_id})`;
+      } else if (msg.dataset.notFound === "1") {
+        msg.hidden = false;
+        msg.textContent = "No leader found with that email address.";
+      } else {
+        msg.hidden = true;
+        msg.textContent = "";
+      }
+    }
+
+    // Leader view: the leader types their email and the page finds their record. The email is never shown back.
+    function identifyByEmail() {
+      const typed = str(document.getElementById("leader-email").value).toLowerCase();
+      if (!typed) return;
+      const match = leaders.find((l) => str(l.email_add).toLowerCase() === typed);
+      myLeaderId = match ? match.leader_id : "";
+      document.getElementById("picker-msg").dataset.notFound = match ? "" : "1";
+      renderAll();
     }
 
     // Small markers in the walk name cell, so files show in the list as well as the edit dialog
@@ -654,11 +676,11 @@
     function canRequestChange(w) {
       const me = leaders.find((l) => l.leader_id === myLeaderId);
       const myName = me ? fullName(me) : "";
+      if (!myName) return false; // nobody identified: no request buttons
       const current = str(w.Leader);
       const validNames = new Set(leaders.map(fullName));
-      const unassigned = !current || !validNames.has(current);
-      if (!myName) return false; // nobody selected: no request buttons
-      return unassigned || current === myName;
+      const unassigned = !current || !validNames.has(current); // no valid leader yet
+      return unassigned || current === myName; // walks they own, or walks with no valid leader
     }
 
     // Walk photos: the uploaded photo (walk_photos/{walk id}) first, else the walk's Image URL, else a mountain placeholder
@@ -1167,7 +1189,7 @@
           }
           if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
           if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
-          if (!myLeaderId) return showError("Choose the leader ID you are requesting as.");
+          if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
 
           const requestId = `${current.id}_${Date.now()}`;
           await set(ref(walksDb, "walk_requests/" + requestId), {
@@ -1196,9 +1218,9 @@
     document.getElementById("grade-filter").addEventListener("change", renderTable);
     document.getElementById("leader-filter").addEventListener("change", renderTable);
     document.querySelectorAll("[data-walks-view]").forEach((b) => b.addEventListener("click", () => setWalksView(b.dataset.walksView)));
-    document.getElementById("leader-picker").addEventListener("change", (e) => {
-      myLeaderId = e.target.value;
-      renderAll();
+    document.getElementById("leader-email").addEventListener("change", identifyByEmail);
+    document.getElementById("leader-email").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); identifyByEmail(); }
     });
 
     // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
