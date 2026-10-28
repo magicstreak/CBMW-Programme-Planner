@@ -277,6 +277,7 @@
     <div id="picker-wrap" class="picker-bar" hidden>
       <label for="leader-email" class="muted">I am</label>
       <input id="leader-email" type="email" placeholder="Your email address" aria-label="Your email address" autocomplete="email" />
+      <button type="button" id="leader-change" class="btn" hidden>Change</button>
       <span id="picker-msg" class="muted" aria-live="polite" hidden></span>
     </div>
 
@@ -578,10 +579,15 @@
     function renderPicker() {
       if (!isLeader) return;
       const msg = document.getElementById("picker-msg");
+      const input = document.getElementById("leader-email");
+      const changeBtn = document.getElementById("leader-change");
       const me = leaders.find((l) => l.leader_id === myLeaderId);
+      // Once identified, the email is locked and the leader can use Change to switch
+      input.disabled = !!me;
+      changeBtn.hidden = !me;
       if (me) {
         msg.hidden = false;
-        msg.textContent = `Showing as ${fullName(me)} (${me.leader_id})`;
+        msg.textContent = `Logged in as ${str(me.email_add)}`;
       } else if (msg.dataset.notFound === "1") {
         msg.hidden = false;
         msg.textContent = "No leader found with that email address.";
@@ -590,6 +596,7 @@
         msg.textContent = "";
       }
     }
+
 
     // Leader view: the leader types their email and the page finds their record. The email is never shown back.
     function identifyByEmail() {
@@ -1268,6 +1275,18 @@
     document.getElementById("grade-filter").addEventListener("change", renderTable);
     document.getElementById("leader-filter").addEventListener("change", renderTable);
     document.querySelectorAll("[data-walks-view]").forEach((b) => b.addEventListener("click", () => setWalksView(b.dataset.walksView)));
+    document.getElementById("leader-change").addEventListener("click", () => {
+      rememberLeaderEmail("");
+      hubEmail = "";
+      myLeaderId = "";
+      const input = document.getElementById("leader-email");
+      input.value = "";
+      input.disabled = false;
+      document.getElementById("leader-change").hidden = true;
+      document.getElementById("picker-msg").dataset.notFound = "";
+      renderAll();
+      input.focus();
+    });
     document.getElementById("leader-email").addEventListener("change", identifyByEmail);
     document.getElementById("leader-email").addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); identifyByEmail(); }
