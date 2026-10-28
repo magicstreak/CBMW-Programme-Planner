@@ -297,6 +297,7 @@
         </div>
         <div class="toolbar-group">
           <button type="button" class="btn btn-primary" id="add-walk" hidden>+ Add walk</button>
+          <button type="button" class="btn btn-primary" id="request-new-walk" hidden>+ Request new walk</button>
         </div>
       </div>
 
@@ -842,8 +843,11 @@
       document.getElementById("pending-count").textContent = list.length ? `(${list.length})` : "";
       document.getElementById("pending-list").innerHTML = list.length ? list.map((r) => {
         const requester = r.requested_by ? `${escapeHtml(r.requested_by)}${leaderName(r.requested_by) ? " – " + escapeHtml(leaderName(r.requested_by)) : ""}` : "Unknown leader";
+        const title = r.request_type === "new"
+          ? `New walk: ${escapeHtml(r.changes?.Route_Name || "(no name)")}`
+          : `Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}`;
         return `<div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="who">${title}</div>
           <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
           ${changeListHtml(r)}
           <div class="request-actions">
@@ -864,7 +868,7 @@
       document.getElementById("my-requests-title").textContent = `My change requests (${mine.length})`;
       document.getElementById("my-requests-list").innerHTML = mine.map((r) => `
         <div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="who">${r.request_type === "new" ? `New walk: ${escapeHtml(r.changes?.Route_Name || "(no name)")}` : `Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}`}</div>
           <div class="meta">Requested ${escapeHtml(formatDate(r.requested_at))} · <span class="pill pill-${escapeHtml(r.status)}">${escapeHtml(statusLabel(r.status))}</span></div>
           ${changeListHtml(r)}
           ${r.status === "rejected" && r.reason ? `<div class="meta">Reason: ${escapeHtml(r.reason)}</div>` : ""}
@@ -893,6 +897,7 @@
       renderTable();
       renderPending();
       renderMyRequests();
+      document.getElementById("request-new-walk").hidden = !(isLeader && myLeaderId);
     }
 
     /* ========================================================= LIST / MAP VIEW ========================================================= */
@@ -1028,6 +1033,12 @@
         lede.textContent = "Changes apply straight away.";
         submit.textContent = "Save changes";
         fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
+      } else if (mode === "new") {
+        title.textContent = "Request a new walk";
+        lede.textContent = "Your new walk goes to an admin for approval. It is not added to the walks database until it is approved.";
+        submit.textContent = "Send request";
+        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)),
+          ...FILE_FIELDS.map((f) => ({ ...f, hint: "Your file goes to an admin for approval." }))];
       } else {
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
@@ -1041,6 +1052,7 @@
       document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
+          : mode === "new" ? ""
           : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
         return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
       }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
@@ -1055,7 +1067,7 @@
       const cards = fileFields.map((f) => {
         const current = str(walk?.[f.nameKey || f.key]);
         const isGpx = f.key === "GPX";
-        const hint = mode === "request"
+        const hint = mode === "request" || mode === "new"
           ? "Sent to an admin for approval."
           : isGpx ? "GPX route, up to 2 MB." : "Resized automatically for the website.";
         return `<div class="file-card">
@@ -1117,9 +1129,9 @@
           ? Array.from(document.querySelectorAll(`#form-fields input[name="${f.key}"]:checked`)).map((i) => i.value).join(", ")
           : get(f.key);
       }
-      if (mode !== "request") record.walk_key = get("walk_key");
+      if (mode !== "request" && mode !== "new") record.walk_key = get("walk_key");
 
-      if (mode !== "request") {
+      if (mode !== "request" && mode !== "new") {
         if (!record.walk_key) return showError("Walk key is required.");
         if (!/^[A-Za-z0-9_-]+$/.test(record.walk_key)) return showError("Walk key can only use letters, numbers, _ and -.");
         if (mode === "create" && walkById(record.walk_key)) return showError(`Walk key ${record.walk_key} is already used.`);
@@ -1166,6 +1178,26 @@
           Object.assign(data, fileNameFields(files));
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
           await saveFileChanges(dialogWalk.id, files);
+        } else if (mode === "new") {
+          if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
+          const changes = {};
+          for (const f of EDITABLE_FIELDS) {
+            if (LEADER_HIDDEN_FIELDS.includes(f.key)) continue;
+            if (record[f.key]) changes[f.key] = record[f.key];
+          }
+          if (files.gpx && !files.gpx.remove) { changes.GPX_Name = files.gpx.name; changes.GPX_Text = files.gpx.text; }
+          if (files.photo && !files.photo.remove) { changes.Photo_Name = files.photo.name; changes.Photo_Data = files.photo.data; }
+          const requestId = `new_${Date.now()}`;
+          await set(ref(walksDb, "walk_requests/" + requestId), {
+            request_id: requestId,
+            request_type: "new",
+            walk_id: "",
+            requested_by: myLeaderId,
+            status: "pending",
+            requested_at: new Date().toISOString(),
+            changes,
+            before: {},
+          });
         } else {
           const current = dialogWalk;
           const changes = {};
@@ -1214,6 +1246,7 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeDialog(); });
 
     document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
+    document.getElementById("request-new-walk").addEventListener("click", () => openDialog("new"));
     document.getElementById("search").addEventListener("input", renderTable);
     document.getElementById("grade-filter").addEventListener("change", renderTable);
     document.getElementById("leader-filter").addEventListener("change", renderTable);
@@ -1323,6 +1356,34 @@
       }
 
       try {
+        if (btn.dataset.action === "approve" && request.request_type === "new") {
+          const suggested = nextWalkId();
+          const typedKey = prompt("Walk key for the new walk (e.g. walk_610):", suggested);
+          if (typedKey === null) return;
+          const newKey = str(typedKey);
+          if (!/^[A-Za-z0-9_-]+$/.test(newKey)) return alert("Walk key can only use letters, numbers, _ and -.");
+          if (walkById(newKey)) return alert(`Walk key ${newKey} is already used. Choose another.`);
+          if (!confirm(`Add "${request.changes?.Route_Name || "this walk"}" as ${newKey}?`)) return;
+          const data = {};
+          const fileWrites = [];
+          const now = new Date().toISOString();
+          for (const [key, value] of Object.entries(request.changes || {})) {
+            if (key === "GPX_Text") fileWrites.push(saveFileNode(newKey, "walk_gpx", value ? { name: request.changes.GPX_Name || "", text: value, updated_at: now } : null));
+            else if (key === "Photo_Data") fileWrites.push(saveFileNode(newKey, "walk_photos", value ? { name: request.changes.Photo_Name || "", data: value, updated_at: now } : null));
+            else data[key] = toStored(value);
+          }
+          // The requesting leader becomes the owner of the new walk
+          const owner = leaders.find((l) => l.leader_id === request.requested_by);
+          if (owner) data.Leader = fullName(owner);
+          await set(ref(walksDb, "walks/" + newKey), data);
+          await Promise.all(fileWrites);
+          await update(ref(walksDb, "walk_requests/" + request.request_id), {
+            status: "approved",
+            walk_id: newKey,
+            reviewed_at: new Date().toISOString(),
+          });
+          return;
+        }
         if (btn.dataset.action === "approve") {
           const walk = walkById(request.walk_id);
           if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
