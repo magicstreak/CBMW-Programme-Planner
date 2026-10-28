@@ -161,6 +161,9 @@
     /* List / Map toggle */
     .view-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
     .walks-map-panel { margin-top: 12px; }
+    .walk-pin { font-size: 0.9rem; line-height: 1.4; max-height: 320px; overflow-y: auto; }
+    .walk-pin-rows { margin-top: 6px; display: grid; gap: 4px; }
+    .walk-pin-label { color: #5b6672; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
     #walks-map {
       width: 100%;
       height: max(480px, calc(100vh - 280px));
@@ -439,6 +442,9 @@
     ];
     // Leader view (details and change requests) does not show the last walked / last offered history
     const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
+    // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
+    const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
+      "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
     // File uploads: shown in the edit and request forms. The walk record keeps the file name; the file itself is stored beside it.
     const FILE_FIELDS = [
       { key: "GPX", nameKey: "GPX_Name", type: "file", label: "GPX route file", accept: ".gpx,application/gpx+xml,text/xml" },
@@ -572,10 +578,13 @@
     function renderPicker() {
       if (!isLeader) return;
       const msg = document.getElementById("picker-msg");
+      const input = document.getElementById("leader-email");
       const me = leaders.find((l) => l.leader_id === myLeaderId);
+      // Once identified, the email is locked and the leader can use Change to switch
+      input.disabled = !!me;
       if (me) {
         msg.hidden = false;
-        msg.textContent = `Showing as ${fullName(me)} (${me.leader_id})`;
+        msg.textContent = `I am currently logged in as ${fullName(me)}`;
       } else if (msg.dataset.notFound === "1") {
         msg.hidden = false;
         msg.textContent = "No leader found with that email address.";
@@ -585,12 +594,14 @@
       }
     }
 
+
     // Leader view: the leader types their email and the page finds their record. The email is never shown back.
     function identifyByEmail() {
       const typed = str(document.getElementById("leader-email").value).toLowerCase();
       if (!typed) return;
       const match = leaders.find((l) => str(l.email_add).toLowerCase() === typed);
       myLeaderId = match ? match.leader_id : "";
+      if (match) rememberLeaderEmail(typed);
       document.getElementById("picker-msg").dataset.notFound = match ? "" : "1";
       renderAll();
     }
@@ -632,9 +643,6 @@
           <div class="detail-value">${shown}</div>
         </div>`;
       };
-      // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
-      const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
-        "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
       const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
       return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
@@ -905,6 +913,21 @@
     let walksMap = null;
     let walksMapLayer = null;
 
+    // Popup content for a map pin: the walk's main details, in every view.
+    // Each view hides the same fields the list hides from it (walker view hides leader details).
+    const POPUP_FIELDS = [
+      "Grade", "Pueblo", "Leader", "Permitted_Leaders", "Start_Time", "Distance", "Ascent", "Total_Time",
+      "Terrain", "Dogs", "Scr", "Restrictions", "Route_Description", "Directions", "Lunch_or_Break_Notes", "Reservation_Notes",
+    ];
+    function walkPopupHtml(w) {
+      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
+      const rows = POPUP_FIELDS
+        .filter((k) => !hidden.includes(k) && str(w[k]) !== "")
+        .map((k) => `<div class="walk-pin-row"><span class="walk-pin-label">${escapeHtml(LABELS[k] || k)}</span> ${escapeHtml(str(w[k]))}</div>`)
+        .join("");
+      return `<div class="walk-pin"><strong>${escapeHtml(w.id)}</strong> ${escapeHtml(str(w.Route_Name))}${rows ? `<div class="walk-pin-rows">${rows}</div>` : ""}</div>`;
+    }
+
     // Pins for the filtered walks that have coordinates. Each pin shows the walk's details in a popup.
     function renderMap() {
       if (walksView !== "map") return;
@@ -928,9 +951,7 @@
         const lat = Number(str(w.Latitude));
         const lon = Number(str(w.Longitude));
         if (!str(w.Latitude) || !str(w.Longitude) || !Number.isFinite(lat) || !Number.isFinite(lon)) { missing += 1; continue; }
-        const details = [w.Grade, w.Distance, w.Ascent].map(str).filter(Boolean).map(escapeHtml).join(" · ");
-        const popup = `<strong>${escapeHtml(w.id)}</strong><br>${escapeHtml(str(w.Route_Name))}${details ? `<br>${details}` : ""}${str(w.Pueblo) ? `<br>${escapeHtml(w.Pueblo)}` : ""}`;
-        L.marker([lat, lon]).bindPopup(popup).addTo(walksMapLayer);
+        L.marker([lat, lon]).bindPopup(walkPopupHtml(w), { maxWidth: 320, maxHeight: 360 }).addTo(walksMapLayer);
         points.push([lat, lon]);
       }
       // Measure and centre once visible, and again shortly after
@@ -1256,6 +1277,34 @@
       if (e.key === "Enter") { e.preventDefault(); identifyByEmail(); }
     });
 
+    // Leader email: passed from the Leaders Hub (?email=), or remembered on this device.
+    // Used to identify the leader once the leader list has loaded.
+    const LEADER_EMAIL_KEY = "cbmw-leader-email";
+    let hubEmail = "";
+    try {
+      const hubUrl = new URL(window.location.href);
+      hubEmail = hubUrl.searchParams.get("email") || "";
+      if (hubEmail) {
+        hubUrl.searchParams.delete("email");
+        history.replaceState(null, "", hubUrl.pathname + hubUrl.search + hubUrl.hash);
+      }
+    } catch (e) {}
+    function rememberLeaderEmail(email) {
+      try { localStorage.setItem(LEADER_EMAIL_KEY, email); } catch (e) {}
+    }
+    let leaderEmailApplied = false;
+    function applySavedLeaderEmail() {
+      if (leaderEmailApplied) return;
+      leaderEmailApplied = true;
+      let email = hubEmail;
+      if (!email) { try { email = localStorage.getItem(LEADER_EMAIL_KEY) || ""; } catch (e) {} }
+      const input = document.getElementById("leader-email");
+      if (!input || !email) return;
+      input.value = email;
+      identifyByEmail();
+    }
+
+
     // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
     document.getElementById("walks-body").addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
@@ -1449,6 +1498,7 @@
         onValue(ref(bookingsDb, "leaders"), (snapshot) => {
           leaders = Object.values(snapshot.val() || {}).filter(Boolean)
             .sort((a, b) => Number(a.leader_id) - Number(b.leader_id));
+          if (leaders.length) applySavedLeaderEmail();
           renderAll();
         }, (error) => console.error("Unable to load leaders:", error));
 
