@@ -103,12 +103,23 @@
     .card h2 { margin: 0 0 10px; font-size: 1.05rem; color: var(--primary); }
     .request-item { padding: 10px 0; border-top: 1px solid var(--border); }
     .request-item:first-of-type { border-top: none; }
+    .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; max-height: 180px; overflow-y: auto; border: 1px solid #d6dde6; border-radius: 6px; padding: 8px 10px; }
+    .form-field .check-list .check-item { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.9rem; font-weight: 400; cursor: pointer; }
+    .check-item input[type=checkbox] { width: auto; margin: 0; flex: none; }
     .request-item .who { font-weight: 600; }
     .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
+    .my-requests > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+    .my-requests > summary::-webkit-details-marker { display: none; }
+    .my-requests > summary::after { content: "▾"; color: var(--text-muted); font-size: 1rem; }
+    .my-requests:not([open]) > summary::after { content: "▸"; }
+    .my-requests > summary h2 { margin-bottom: 0; }
+    .my-requests[open] > summary h2 { margin-bottom: 10px; }
+    .clear-request-btn { margin-top: 6px; }
     .change-list { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
     .change-list li { margin-bottom: 2px; }
     .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+    .picker-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .table-wrap { overflow-x: auto; }
     .walks-table th.photo-cell, .walks-table td.photo-cell { width: 128px; }
     .walks-table th.sortable { cursor: pointer; user-select: none; }
@@ -260,6 +271,12 @@
       <p id="page-subtitle"></p>
     </header>
 
+    <div id="picker-wrap" class="picker-bar" hidden>
+      <label for="leader-email" class="muted">I am</label>
+      <input id="leader-email" type="email" placeholder="Your email address" aria-label="Your email address" autocomplete="email" />
+      <span id="picker-msg" class="muted" aria-live="polite" hidden></span>
+    </div>
+
     <main class="panel">
       <div class="toolbar">
         <div class="toolbar-group">
@@ -273,10 +290,6 @@
             <option value="S">S</option>
             <option value="VS">VS</option>
           </select>
-          <div id="picker-wrap" class="toolbar-group" hidden>
-            <label for="leader-picker" class="muted">Requesting as</label>
-            <select id="leader-picker" aria-label="Choose your leader ID"></select>
-          </div>
         </div>
         <div class="toolbar-group" role="group" aria-label="Show walks as">
           <button type="button" class="btn view-btn" data-walks-view="table" aria-pressed="true">List</button>
@@ -284,6 +297,7 @@
         </div>
         <div class="toolbar-group">
           <button type="button" class="btn btn-primary" id="add-walk" hidden>+ Add walk</button>
+          <button type="button" class="btn btn-primary" id="request-new-walk" hidden>+ Request new walk</button>
         </div>
       </div>
 
@@ -293,8 +307,10 @@
       </section>
 
       <section class="card" id="my-requests-panel" hidden>
-        <h2>My change requests</h2>
-        <div id="my-requests-list"></div>
+        <details class="my-requests" open>
+          <summary><h2 id="my-requests-title">My change requests</h2></summary>
+          <div id="my-requests-list"></div>
+        </details>
       </section>
 
       <div class="table-wrap">
@@ -396,7 +412,8 @@
       { key: "Route_Name", label: "Route name", required: true },
       { key: "Pueblo", label: "Pueblo" },
       { key: "Grade", label: "Grade", type: "choice", options: GRADES },
-      { key: "Leader", label: "Leader", type: "choice", source: "leaders" },
+      { key: "Leader", label: "Leader (owner)", type: "choice", source: "leaders" },
+      { key: "Permitted_Leaders", label: "Permitted leaders", type: "multichoice", source: "leaders", full: true, hint: "Other leaders who may lead this walk. The owner is always permitted." },
       { key: "Start_Time", label: "Start time" },
       { key: "Distance", label: "Distance" },
       { key: "Ascent", label: "Ascent" },
@@ -554,9 +571,28 @@
 
     function renderPicker() {
       if (!isLeader) return;
-      const select = document.getElementById("leader-picker");
-      select.innerHTML = `<option value="" ${myLeaderId ? "" : "selected"} disabled>Choose a leader ID</option>` +
-        leaders.map((l) => `<option value="${escapeHtml(l.leader_id)}" ${l.leader_id === myLeaderId ? "selected" : ""}>${escapeHtml(l.leader_id)} – ${escapeHtml(`${l.first_name || ""} ${l.surname || ""}`.trim())}</option>`).join("");
+      const msg = document.getElementById("picker-msg");
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      if (me) {
+        msg.hidden = false;
+        msg.textContent = `Showing as ${fullName(me)} (${me.leader_id})`;
+      } else if (msg.dataset.notFound === "1") {
+        msg.hidden = false;
+        msg.textContent = "No leader found with that email address.";
+      } else {
+        msg.hidden = true;
+        msg.textContent = "";
+      }
+    }
+
+    // Leader view: the leader types their email and the page finds their record. The email is never shown back.
+    function identifyByEmail() {
+      const typed = str(document.getElementById("leader-email").value).toLowerCase();
+      if (!typed) return;
+      const match = leaders.find((l) => str(l.email_add).toLowerCase() === typed);
+      myLeaderId = match ? match.leader_id : "";
+      document.getElementById("picker-msg").dataset.notFound = match ? "" : "1";
+      renderAll();
     }
 
     // Small markers in the walk name cell, so files show in the list as well as the edit dialog
@@ -597,7 +633,7 @@
         </div>`;
       };
       // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
-      const WALKER_HIDDEN = ["Leader", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
+      const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
         "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
       const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
@@ -641,11 +677,11 @@
     function canRequestChange(w) {
       const me = leaders.find((l) => l.leader_id === myLeaderId);
       const myName = me ? fullName(me) : "";
+      if (!myName) return false; // nobody identified: no request buttons
       const current = str(w.Leader);
       const validNames = new Set(leaders.map(fullName));
-      const unassigned = !current || !validNames.has(current);
-      if (!myName) return false; // nobody selected: no request buttons
-      return unassigned || current === myName;
+      const unassigned = !current || !validNames.has(current); // no valid leader yet
+      return unassigned || current === myName; // walks they own, or walks with no valid leader
     }
 
     // Walk photos: the uploaded photo (walk_photos/{walk id}) first, else the walk's Image URL, else a mountain placeholder
@@ -807,8 +843,11 @@
       document.getElementById("pending-count").textContent = list.length ? `(${list.length})` : "";
       document.getElementById("pending-list").innerHTML = list.length ? list.map((r) => {
         const requester = r.requested_by ? `${escapeHtml(r.requested_by)}${leaderName(r.requested_by) ? " – " + escapeHtml(leaderName(r.requested_by)) : ""}` : "Unknown leader";
+        const title = r.request_type === "new"
+          ? `New walk: ${escapeHtml(r.changes?.Route_Name || "(no name)")}`
+          : `Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}`;
         return `<div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="who">${title}</div>
           <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
           ${changeListHtml(r)}
           <div class="request-actions">
@@ -822,22 +861,43 @@
     function renderMyRequests() {
       const panel = document.getElementById("my-requests-panel");
       if (!isLeader || !myLeaderId) { panel.hidden = true; return; }
-      const mine = Object.values(requests).filter((r) => r && r.requested_by === myLeaderId)
+      // Requests the leader has cleared stay in Firebase (walk_requests) but are not listed for them
+      const mine = Object.values(requests).filter((r) => r && r.requested_by === myLeaderId && !r.hidden_by_requester)
         .sort((a, b) => String(b.requested_at).localeCompare(String(a.requested_at)));
       panel.hidden = mine.length === 0;
+      document.getElementById("my-requests-title").textContent = `My change requests (${mine.length})`;
       document.getElementById("my-requests-list").innerHTML = mine.map((r) => `
         <div class="request-item">
-          <div class="who">Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}</div>
+          <div class="who">${r.request_type === "new" ? `New walk: ${escapeHtml(r.changes?.Route_Name || "(no name)")}` : `Walk ${escapeHtml(r.walk_id)} – ${escapeHtml(walkById(r.walk_id)?.Route_Name || "")}`}</div>
           <div class="meta">Requested ${escapeHtml(formatDate(r.requested_at))} · <span class="pill pill-${escapeHtml(r.status)}">${escapeHtml(statusLabel(r.status))}</span></div>
           ${changeListHtml(r)}
           ${r.status === "rejected" && r.reason ? `<div class="meta">Reason: ${escapeHtml(r.reason)}</div>` : ""}
+          ${r.status !== "pending" ? `<button type="button" class="btn btn-small clear-request-btn" data-action="clear-request" data-request="${escapeHtml(r.request_id)}">Hide</button>` : ""}
         </div>`).join("");
     }
+
+    // Hide: hides the request from this leader only. The record stays in Firebase and admins still see it.
+    document.getElementById("my-requests-list").addEventListener("click", async (e) => {
+      const btn = e.target.closest('[data-action="clear-request"]');
+      if (!btn || !walksDb) return;
+      btn.disabled = true;
+      try {
+        await update(ref(walksDb, "walk_requests/" + btn.dataset.request), {
+          hidden_by_requester: true,
+          hidden_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        btn.disabled = false;
+        alert("Could not hide this request. Please try again.");
+        console.error("Hide request failed:", err);
+      }
+    });
 
     function renderAll() {
       renderTable();
       renderPending();
       renderMyRequests();
+      document.getElementById("request-new-walk").hidden = !(isLeader && myLeaderId);
     }
 
     /* ========================================================= LIST / MAP VIEW ========================================================= */
@@ -927,6 +987,14 @@
           `<option value="${escapeHtml(v)}" ${v === current ? "selected" : ""}>${escapeHtml(v)}</option>`
         ).join("");
         control = `<select id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}><option value="" ${current ? "" : "selected"}>–</option>${options}</select>`;
+      } else if (field.type === "multichoice") {
+        const chosen = new Set(str(value).split(",").map((v) => v.trim()).filter(Boolean));
+        const names = [...new Set(leaders.map(fullName).filter(Boolean))];
+        for (const c of chosen) if (!names.includes(c)) names.unshift(c);
+        names.sort(byName);
+        control = `<div class="check-list" id="${id}">${names.map((n) =>
+          `<label class="check-item"><input type="checkbox" name="${field.key}" value="${escapeHtml(n)}" ${chosen.has(n) ? "checked" : ""} ${disabled ? "disabled" : ""} /> ${escapeHtml(n)}</label>`
+        ).join("")}</div>`;
       } else if (field.type === "textarea") {
         control = `<textarea id="${id}" name="${field.key}" ${disabled ? "disabled" : ""}>${val}</textarea>`;
       } else if (field.type === "file") {
@@ -965,6 +1033,12 @@
         lede.textContent = "Changes apply straight away.";
         submit.textContent = "Save changes";
         fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
+      } else if (mode === "new") {
+        title.textContent = "Request a new walk";
+        lede.textContent = "Your new walk goes to an admin for approval. It is not added to the walks database until it is approved.";
+        submit.textContent = "Send request";
+        fields = [...EDITABLE_FIELDS.filter((f) => !LEADER_HIDDEN_FIELDS.includes(f.key)),
+          ...FILE_FIELDS.map((f) => ({ ...f, hint: "Your file goes to an admin for approval." }))];
       } else {
         title.textContent = `Request a change: walk ${walk.id}`;
         lede.textContent = "Your changes go to an admin for approval. The walk stays the same until then.";
@@ -978,6 +1052,7 @@
       document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
+          : mode === "new" ? ""
           : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
         return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
       }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
@@ -992,7 +1067,7 @@
       const cards = fileFields.map((f) => {
         const current = str(walk?.[f.nameKey || f.key]);
         const isGpx = f.key === "GPX";
-        const hint = mode === "request"
+        const hint = mode === "request" || mode === "new"
           ? "Sent to an admin for approval."
           : isGpx ? "GPX route, up to 2 MB." : "Resized automatically for the website.";
         return `<div class="file-card">
@@ -1049,10 +1124,14 @@
     function readForm(mode) {
       const get = (key) => str(form.elements[key]?.value);
       const record = {};
-      for (const f of EDITABLE_FIELDS) record[f.key] = get(f.key);
-      if (mode !== "request") record.walk_key = get("walk_key");
+      for (const f of EDITABLE_FIELDS) {
+        record[f.key] = f.type === "multichoice"
+          ? Array.from(document.querySelectorAll(`#form-fields input[name="${f.key}"]:checked`)).map((i) => i.value).join(", ")
+          : get(f.key);
+      }
+      if (mode !== "request" && mode !== "new") record.walk_key = get("walk_key");
 
-      if (mode !== "request") {
+      if (mode !== "request" && mode !== "new") {
         if (!record.walk_key) return showError("Walk key is required.");
         if (!/^[A-Za-z0-9_-]+$/.test(record.walk_key)) return showError("Walk key can only use letters, numbers, _ and -.");
         if (mode === "create" && walkById(record.walk_key)) return showError(`Walk key ${record.walk_key} is already used.`);
@@ -1099,6 +1178,26 @@
           Object.assign(data, fileNameFields(files));
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
           await saveFileChanges(dialogWalk.id, files);
+        } else if (mode === "new") {
+          if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
+          const changes = {};
+          for (const f of EDITABLE_FIELDS) {
+            if (LEADER_HIDDEN_FIELDS.includes(f.key)) continue;
+            if (record[f.key]) changes[f.key] = record[f.key];
+          }
+          if (files.gpx && !files.gpx.remove) { changes.GPX_Name = files.gpx.name; changes.GPX_Text = files.gpx.text; }
+          if (files.photo && !files.photo.remove) { changes.Photo_Name = files.photo.name; changes.Photo_Data = files.photo.data; }
+          const requestId = `new_${Date.now()}`;
+          await set(ref(walksDb, "walk_requests/" + requestId), {
+            request_id: requestId,
+            request_type: "new",
+            walk_id: "",
+            requested_by: myLeaderId,
+            status: "pending",
+            requested_at: new Date().toISOString(),
+            changes,
+            before: {},
+          });
         } else {
           const current = dialogWalk;
           const changes = {};
@@ -1122,7 +1221,7 @@
           }
           if (!Object.keys(changes).length) return showError("No changes to send. Change a field first.");
           if (pendingFor(current.id).length) return showError("This walk already has a change waiting for approval.");
-          if (!myLeaderId) return showError("Choose the leader ID you are requesting as.");
+          if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
 
           const requestId = `${current.id}_${Date.now()}`;
           await set(ref(walksDb, "walk_requests/" + requestId), {
@@ -1147,13 +1246,14 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeDialog(); });
 
     document.getElementById("add-walk").addEventListener("click", () => openDialog("create"));
+    document.getElementById("request-new-walk").addEventListener("click", () => openDialog("new"));
     document.getElementById("search").addEventListener("input", renderTable);
     document.getElementById("grade-filter").addEventListener("change", renderTable);
     document.getElementById("leader-filter").addEventListener("change", renderTable);
     document.querySelectorAll("[data-walks-view]").forEach((b) => b.addEventListener("click", () => setWalksView(b.dataset.walksView)));
-    document.getElementById("leader-picker").addEventListener("change", (e) => {
-      myLeaderId = e.target.value;
-      renderAll();
+    document.getElementById("leader-email").addEventListener("change", identifyByEmail);
+    document.getElementById("leader-email").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); identifyByEmail(); }
     });
 
     // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
@@ -1256,6 +1356,34 @@
       }
 
       try {
+        if (btn.dataset.action === "approve" && request.request_type === "new") {
+          const suggested = nextWalkId();
+          const typedKey = prompt("Walk key for the new walk (e.g. walk_610):", suggested);
+          if (typedKey === null) return;
+          const newKey = str(typedKey);
+          if (!/^[A-Za-z0-9_-]+$/.test(newKey)) return alert("Walk key can only use letters, numbers, _ and -.");
+          if (walkById(newKey)) return alert(`Walk key ${newKey} is already used. Choose another.`);
+          if (!confirm(`Add "${request.changes?.Route_Name || "this walk"}" as ${newKey}?`)) return;
+          const data = {};
+          const fileWrites = [];
+          const now = new Date().toISOString();
+          for (const [key, value] of Object.entries(request.changes || {})) {
+            if (key === "GPX_Text") fileWrites.push(saveFileNode(newKey, "walk_gpx", value ? { name: request.changes.GPX_Name || "", text: value, updated_at: now } : null));
+            else if (key === "Photo_Data") fileWrites.push(saveFileNode(newKey, "walk_photos", value ? { name: request.changes.Photo_Name || "", data: value, updated_at: now } : null));
+            else data[key] = toStored(value);
+          }
+          // The requesting leader becomes the owner of the new walk
+          const owner = leaders.find((l) => l.leader_id === request.requested_by);
+          if (owner) data.Leader = fullName(owner);
+          await set(ref(walksDb, "walks/" + newKey), data);
+          await Promise.all(fileWrites);
+          await update(ref(walksDb, "walk_requests/" + request.request_id), {
+            status: "approved",
+            walk_id: newKey,
+            reviewed_at: new Date().toISOString(),
+          });
+          return;
+        }
         if (btn.dataset.action === "approve") {
           const walk = walkById(request.walk_id);
           if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
