@@ -180,6 +180,234 @@
     .details-row > td { padding: 14px 16px 18px 20px; box-shadow: inset 4px 0 0 var(--primary); }
     .detail-grid { display: grid; gap: 18px; min-width: 0; }
     .walk-detail .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+/* ---- scheduler lines 1468-1480 ---- */
+    /* ========================================================= WALKER DETAIL CARD ========================================================= */
+    .detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    .detail-overlay.active { display: flex; }
+    .detail-card {
+      width: 100%;
+      max-width: 620px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: #fff;
+      border-radius: var(--radius-panel);
+      padding: 26px 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    }
+    .detail-card {
+/* ---- scheduler lines 1520-1530 ---- */
+    .detail-close:hover { color: var(--text); }
+    .detail-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+/* ---- scheduler lines 1613-1760 ---- */
+    .detail-card.walk-card-wrap { padding: 0; overflow-y: auto; overflow-x: hidden; }
+    .walk-card-header {
+      background: #2d5b3e;
+      color: #fff;
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .walk-card-header h3 { margin: 0; font-size: 1.25rem; line-height: 1.25; color: #fff; }
+    .date-time-cell { white-space: nowrap; }
+    .dt-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.3;
+    }
+    .dt-line + .dt-line { margin-top: 3px; }
+    .dt-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .dt-icon svg { display: block; }
+    .dt-line > span:not(.dt-icon) { font-size: 0.9rem; }
+    .dt-line strong { font-weight: 600; }
+    .walk-card-date { margin-top: 10px; font-size: 1.1rem; font-weight: 600; opacity: 1; }
+    .walk-card-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.6rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .walk-card-head-actions { display: flex; align-items: center; gap: 2px; }
+    .walk-card-expand {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      opacity: 0.9;
+    }
+    .walk-card-expand:hover { opacity: 1; background: rgba(255, 255, 255, 0.12); }
+    /* Expanded card: wider and taller, for desktop screens only */
+    .detail-card.walk-card-wrap.expanded {
+      width: calc(100vw - 48px);
+      max-width: 1200px;
+      max-height: calc(100vh - 40px);
+    }
+    @media (max-width: 640px) { .walk-card-expand { display: none; } }
+    .walk-card-body { padding: 20px 24px 24px; color: #1f2937; }
+    .walk-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .walk-stat { background: #e8f1eb; border-radius: 12px; padding: 12px 14px; }
+    .walk-stat-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2d5b3e;
+    }
+    .walk-stat-value { font-size: 1.1rem; margin-top: 4px; }
+    .walk-quote {
+      margin: 0 0 18px;
+      padding: 4px 14px;
+      border-left: 4px solid #d97706;
+      color: #374151;
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+    .walk-quote-break { display: block; height: 8px; }
+    .walk-comments { margin: 0 0 18px; font-size: 0.95rem; color: #374151; }
+    .walk-comments p { margin: 4px 0 0; white-space: pre-wrap; }
+    .walk-section-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4b5563;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+      margin: 18px 0 10px;
+    }
+    .walk-section-title:first-child { margin-top: 0; }
+    .leader-line { display: block; }
+    .leader-identify { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 16px 0; color: #4b5563; font-size: 0.95rem; }
+    .leader-identify input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; min-width: 240px; }
+    .leader-identify[hidden] { display: none; }
+    .leader-line + .leader-line { margin-top: 4px; }
+    /* Desktop: each leader on one line (name, phone numbers, WhatsApp badge); phones may wrap */
+    .leader-line { white-space: nowrap; }
+    @media (max-width: 640px) { .leader-line { white-space: normal; } }
+    .whatsapp-pref {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 600;
+      font-size: 0.85em;
+    }
+    .walk-info-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 0.95rem;
+    }
+    .walk-info-label { color: #4b5563; font-weight: 500; }
+    .walk-info-value { word-break: break-word; }
+    .walk-info-value a { color: #2d5b3e; text-decoration: underline; }
+    .walk-directions {
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: #4b5563;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .walk-dogs {
+      margin-top: 18px;
+      background: #fefce8;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      color: #78350f;
+      font-size: 0.95rem;
+    }
+    @media (max-width: 600px) {
+      .walk-info-row { grid-template-columns: 90px 1fr; }
+    }
+    /* Walker View admin table: read-only, hidden columns stay hidden even though filter-field and cells use display rules */
+    .filter-field[hidden],
+    .offers-table th[hidden],
+    .offers-table td[hidden] { display: none !important; }
+    th[data-leader-sort] .sort-indicator { display: none; }
+    .past-walks-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; align-self: center; }
+/* ---- scheduler lines 1963-1963 ---- */
+    .walk-meeting-map { display: block; width: 100%; height: 240px; border: 1px solid var(--border); border-radius: 10px; margin: 10px 0 4px; }
+/* ---- scheduler lines 2060-2073 ---- */
+    .walk-thumb {
+      width: 100%; max-width: 152px; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden;
+      background: #eef2f0; color: #6b7280; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;
+    }
+    .walk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .walk-card-photo {
+      width: 100%; aspect-ratio: 16 / 9; max-height: 260px; border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+      background: #eef2f0; color: #6b7280; font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+    }
+    .walk-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* Placeholder: soft sky with a mountain line-drawing */
+    .walk-thumb-empty { background: linear-gradient(180deg, #dfeee6 0%, #f4f7f2 100%) !important; }
+    .walk-thumb-empty svg { width: 46%; max-width: 96px; height: auto; }
+    .walk-card-photo.walk-thumb-empty svg { width: 22%; max-width: 140px; }
+    /* Card photo: full width of the card, not the list thumbnail size */
+    .walk-card-photo.walk-thumb { max-width: none; width: 100%; aspect-ratio: auto; height: 0; padding-bottom: 56.25%; position: relative; border-radius: 12px; }
+    .walk-card-photo.walk-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .walk-card-photo.walk-thumb svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+/* ---- scheduler lines 2237-2252 ---- */
+    .walk-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .walk-stat { padding: 7px 9px; border-radius: 8px; min-width: 0; }
+    .walk-stat-label { font-size: 0.6rem; letter-spacing: 0.06em; }
+    .walk-stat-value {
+      font-size: 0.85rem;
+      margin-top: 2px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 650px) {
+      .walk-stats { grid-template-columns: 1fr; }
+      .walk-stat { padding: 6px 10px; }
+    /* Walks Library card: actions row under the body */
+    .walk-card-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 24px 22px; }
+    .walk-card-actions:empty { display: none; }
+    .walk-info-row a { word-break: break-all; }
+    @media (max-width: 600px) { .walk-card-actions { padding: 4px 20px 18px; } }
     .stat { background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--primary); border-radius: var(--radius-card); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
     .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--primary); word-break: break-word; }
@@ -362,6 +590,11 @@
     </main>
   </div>
 
+  <!-- Walk card popup, opened by clicking a walk row (same structure as the scheduler's walk card) -->
+  <div class="detail-overlay" id="walk-overlay">
+    <div class="detail-card walk-card-wrap" id="walk-card" role="dialog" aria-modal="true" aria-labelledby="detail-title"></div>
+  </div>
+
   <!-- Add / edit / request-change dialog -->
   <div class="modal" id="walk-modal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -463,7 +696,7 @@
     const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
     // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
     const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
-      "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
+      "Season_last_walked_or_offered", "Last_offered_or_led_by", "WiS_Bitly_Link", "KomootBitly", "walkID"];
     // File uploads: shown in the edit and request forms. The walk record keeps the file name; the file itself is stored beside it.
     const FILE_FIELDS = [
       { key: "GPX", nameKey: "GPX_Name", type: "file", label: "GPX route file", accept: ".gpx,application/gpx+xml,text/xml" },
@@ -1363,23 +1596,24 @@
     }
 
 
-    // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
-    document.getElementById("walks-body").addEventListener("click", async (e) => {
+    // Table: a click on a row opens the walk card; the chevron expands the row. Card and table share these actions.
+    async function handleWalkClick(e) {
       const btn = e.target.closest("[data-action]");
       const clickedRow = e.target.closest("tr.walk-row");
 
       if (!btn) {
-        // Whole row toggles, except when a control is clicked
-        if (clickedRow && !e.target.closest("button, a")) toggleWalk(clickedRow.dataset.id);
+        // Whole row opens the walk card, except when a control is clicked
+        if (clickedRow && !e.target.closest("button, a")) openWalkCard(clickedRow.dataset.id);
         return;
       }
+      if (btn.dataset.action === "close-card") return closeWalkCard();
+      if (btn.dataset.action === "toggle") return toggleWalk(btn.dataset.id);
       const walk = walkById(btn.dataset.id);
       if (!walk) return;
 
       if (btn.dataset.action === "download-gpx" || btn.dataset.action === "view-photo") return openWalkFile(walk.id, btn.dataset.action);
-      if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
-      if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
-      if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
+      if (btn.dataset.action === "edit" && isAdmin) { closeWalkCard(); return openDialog("edit", walk); }
+      if (btn.dataset.action === "request" && isLeader) { closeWalkCard(); return openDialog("request", walk); }
       if (btn.dataset.action === "delete" && isAdmin) {
         const used = bookingCountFor(walk.id);
         const pending = pendingFor(walk.id).length;
@@ -1393,11 +1627,126 @@
           await Promise.all([remove(ref(walksDb, "walk_gpx/" + walk.id)), remove(ref(walksDb, "walk_photos/" + walk.id))]).catch(() => {});
           await Promise.all(pendingFor(walk.id).map((r) => remove(ref(walksDb, "walk_requests/" + r.request_id)))).catch(() => {});
           expandedWalks.delete(walk.id);
+          closeWalkCard();
         } catch (err) {
           console.error("Delete failed:", err);
           alert("Could not delete. Check the database permissions.");
         }
       }
+    }
+    document.getElementById("walks-body").addEventListener("click", handleWalkClick);
+
+    // Walk card popup: same look as the scheduler's walk card. Opened by a row click, shows the full details and actions.
+    function walkCardActionsHtml(w) {
+      const buttons = [];
+      if (isAdmin) {
+        buttons.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
+        buttons.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+      } else if (isLeader && canRequestChange(w)) {
+        const waiting = pendingFor(w.id).length > 0;
+        buttons.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
+      }
+      return buttons.join("");
+    }
+    // Walk card: same header, stat tiles, field groups, map and links as the walk scheduler's card
+    function walkCardHtml(w) {
+      const value = (k) => str(w[k]);
+      const labelOf = (k) => (EDITABLE_FIELDS.find((f) => f.key === k) || {}).label || k;
+      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
+      const show = (k) => !hidden.includes(k) && value(k) !== "";
+      const grade = value("Grade");
+      const url = (v) => /^https?:\/\//.test(v);
+      const stat = (label, v) => `
+        <div class="walk-stat">
+          <div class="walk-stat-label">${escapeHtml(label)}</div>
+          <div class="walk-stat-value">${escapeHtml(v || "–")}</div>
+        </div>`;
+      const info = (label, valueHtml) => `<div class="walk-info-row"><span class="walk-info-label">${escapeHtml(label)}</span><span class="walk-info-value">${valueHtml}</span></div>`;
+      const linkTo = (v) => `<a href="${escapeHtml(v)}" target="_blank" rel="noopener noreferrer">${escapeHtml(v)}</a>`;
+
+      // Location and links
+      const hasCoords = show("Latitude") && show("Longitude");
+      const lat = Number(value("Latitude"));
+      const lon = Number(value("Longitude"));
+      const coordsOk = hasCoords && Number.isFinite(lat) && Number.isFinite(lon);
+      const mapUrl = coordsOk ? `https://www.google.com/maps?q=${encodeURIComponent(lat + "," + lon)}` : "";
+      const rows = [];
+      if (show("Leader")) rows.push(info(labelOf("Leader"), escapeHtml(value("Leader"))));
+      if (show("Pueblo")) rows.push(info(labelOf("Pueblo"), escapeHtml(value("Pueblo"))));
+      if (show("Start_Time")) rows.push(info(labelOf("Start_Time"), escapeHtml(value("Start_Time"))));
+      if (show("WiS_URL") && url(value("WiS_URL"))) rows.push(info("Walks in Spain", linkTo(value("WiS_URL"))));
+      if (show("WiS_Bitly_Link") && url(value("WiS_Bitly_Link"))) rows.push(info("Short link", linkTo(value("WiS_Bitly_Link"))));
+      if (show("KomootBitly") && url(value("KomootBitly"))) rows.push(info("Komoot", linkTo(value("KomootBitly"))));
+      if (show("Image_URL") && url(value("Image_URL"))) rows.push(info("Image", linkTo(value("Image_URL"))));
+      if (coordsOk) rows.push(info("Google Maps", `<a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mapUrl)}</a>`));
+      if (value("GPX_Name")) rows.push(info("GPX route", `<a href="#" data-action="download-gpx" data-id="${escapeHtml(w.id)}">${escapeHtml(value("GPX_Name"))} ↓</a>`));
+      const map = coordsOk
+        ? `<iframe class="walk-meeting-map" title="Meeting point map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lon)}&amp;z=14&amp;output=embed"></iframe>`
+        : "";
+
+      // Written notes and directions
+      const quote = show("Route_Description") ? `<blockquote class="walk-quote">${escapeHtml(value("Route_Description"))}</blockquote>` : "";
+      const directions = show("Directions") ? `<div class="walk-section-title">${escapeHtml(labelOf("Directions"))}</div><div class="walk-directions">${escapeHtml(value("Directions"))}</div>` : "";
+      const noteKeys = ["Restrictions", "Lunch_or_Break_Notes", "Reservation_Notes"].filter(show);
+      const notes = noteKeys.length
+        ? `<div class="walk-section-title">Notes</div><div class="walk-info">${noteKeys.map((k) => info(labelOf(k), escapeHtml(value(k)))).join("")}</div>` : "";
+      const dogs = show("Dogs") ? `<div class="walk-dogs">🐾 ${escapeHtml(value("Dogs"))}</div>` : "";
+
+      // Leaders and history: admin only
+      const adminKeys = ["Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by"];
+      const adminRows = isAdmin ? adminKeys.filter(show).map((k) => info(labelOf(k), escapeHtml(value(k)))).join("") : "";
+      const admin = adminRows ? `<div class="walk-section-title">Leaders and history</div><div class="walk-info">${adminRows}</div>` : "";
+
+      // Card actions, same rules as the table
+      const actions = walkCardActionsHtml(w);
+
+      return `
+        <div class="walk-card-header">
+          <div>
+            <h3 id="detail-title">${escapeHtml(str(w.Route_Name) || "Walk details")}</h3>
+            <div class="walk-card-date">Walk ${escapeHtml(w.id)}${grade ? ` • Grade ${escapeHtml(grade)}` : ""}</div>
+          </div>
+          <div class="walk-card-head-actions">
+            <button class="walk-card-close" type="button" data-action="close-card" aria-label="Close">×</button>
+          </div>
+        </div>
+        <div class="walk-card-body">
+          ${walkThumbHtml(w).replace('class="walk-thumb ', 'class="walk-card-photo walk-thumb ')}
+          <div class="walk-stats">
+            ${stat("Distance", value("Distance"))}
+            ${stat("Ascent", value("Ascent"))}
+            ${stat("Total time", value("Total_Time"))}
+            ${stat("Grade", [grade, value("Terrain"), value("Scr")].filter(Boolean).join(" / "))}
+          </div>
+          ${quote}
+          <div class="walk-section-title">Location and links</div>
+          <div class="walk-info">${rows.join("")}</div>
+          ${map}
+          ${directions}
+          ${notes}
+          ${dogs}
+          ${admin}
+        </div>
+        <div class="walk-card-actions">${actions}</div>`;
+    }
+    function openWalkCard(id) {
+      const w = walkById(id);
+      if (!w) return;
+      const card = document.getElementById("walk-card");
+      card.innerHTML = walkCardHtml(w);
+      hydrateWalkThumbs();
+      document.getElementById("walk-overlay").classList.add("active");
+    }
+    function closeWalkCard() {
+      document.getElementById("walk-overlay").classList.remove("active");
+    }
+    document.getElementById("walk-overlay").addEventListener("click", (e) => {
+      if (e.target.id === "walk-overlay") return closeWalkCard();
+      if (e.target.closest("a[href='#']")) e.preventDefault();
+      handleWalkClick(e);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeWalkCard();
     });
 
     // Loads a walk's GPX or photo from the database, only when asked for
