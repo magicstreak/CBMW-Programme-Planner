@@ -178,11 +178,30 @@
     .actions-cell { white-space: nowrap; }
 
     .details-row > td { padding: 14px 16px 18px 20px; box-shadow: inset 4px 0 0 var(--primary); }
-    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
-    .detail-grid .wide { grid-column: 1 / -1; }
-    .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-    .detail-value { white-space: pre-line; word-break: break-word; }
-    .detail-value a { color: var(--primary); }
+    .detail-grid { display: grid; gap: 18px; min-width: 0; }
+    .walk-detail .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+    .stat { background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--primary); border-radius: var(--radius-card); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--primary); word-break: break-word; }
+    .walk-detail .detail-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .dsec { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); padding: 12px 14px; min-width: 0; }
+    .dsec h4 { margin: 0 0 10px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    .dsec-admin { background: var(--bg-muted); }
+    .kv dd a { color: var(--primary); overflow-wrap: anywhere; }
+    .kv-list { margin: 0; display: grid; gap: 8px; }
+    .kv dt { font-size: 0.75rem; color: var(--text-muted); }
+    .kv dd { margin: 0; white-space: pre-line; word-break: break-word; }
+    .coords { margin: 0 0 8px; font-variant-numeric: tabular-nums; color: var(--text); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-block; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--primary); color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+    .chip:hover { background: var(--primary); color: #fff; }
+    .note-block + .note-block { margin-top: 12px; }
+    .note-block h5 { margin: 0 0 4px; font-size: 0.8rem; color: var(--primary); }
+    .note-block p { margin: 0; white-space: pre-line; border-left: 3px solid var(--primary); padding-left: 10px; word-break: break-word; }
+    .file-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .file-card { border: 1px dashed var(--border); border-radius: var(--radius-card); padding: 10px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
+    .file-name { word-break: break-all; font-size: 0.9rem; }
+    .detail-grid a { color: var(--primary); }
 
     .pill {
       display: inline-block;
@@ -260,7 +279,7 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
     @media (max-width: 640px) {
-      .form-grid, .detail-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
       .toolbar input[type="search"], .toolbar select { min-width: 0; width: 100%; }
     }
   </style>
@@ -615,37 +634,76 @@
     }
 
     function detailGridHtml(walk) {
-      // Files: the names are on the walk record; the contents load only when asked for
-      const fileCell = (() => {
-        const gpx = str(walk.GPX_Name);
-        const photo = str(walk.Photo_Name);
-        return `<div class="wide">
-          <div class="detail-label">Files</div>
-          <div class="detail-value file-links">
-            ${gpx
-              ? `<span>${escapeHtml(gpx)}</span> <button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>`
-              : `<span class="muted">No GPX file</span>`}
-            <span class="file-sep"></span>
-            ${photo
-              ? `<span>${escapeHtml(photo)}</span> <button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>`
-              : `<span class="muted">No photo</span>`}
-          </div>
-        </div>`;
-      })();
-      const cell = (f) => {
-        const value = str(walk[f.key]);
-        const shown = !value ? '<span class="muted">–</span>'
-          : f.type === "url" && /^https?:\/\//.test(value)
-            ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`
-            : escapeHtml(value);
-        return `<div class="${f.full ? "wide" : ""}">
-          <div class="detail-label">${escapeHtml(f.label)}</div>
-          <div class="detail-value">${shown}</div>
-        </div>`;
-      };
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
-      const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
-      return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
+      const visible = new Set(EDITABLE_FIELDS.map((f) => f.key).filter((k) => !hidden.includes(k)));
+      const labelOf = (k) => (EDITABLE_FIELDS.find((f) => f.key === k) || {}).label || k;
+      const value = (k) => str(walk[k]);
+      const has = (k) => visible.has(k) && value(k) !== "";
+      const link = (v) => /^https?:\/\//.test(v)
+        ? `<a href="${escapeHtml(v)}" target="_blank" rel="noopener noreferrer">${escapeHtml(v)}</a>`
+        : escapeHtml(v);
+
+      // Headline numbers
+      const statKeys = [["Grade", "Grade"], ["Distance", "Distance"], ["Ascent", "Ascent"], ["Total_Time", "Total time"], ["Terrain", "Terrain"], ["Scr", "SCR"]];
+      const stats = statKeys.filter(([k]) => has(k)).map(([k, label]) =>
+        `<div class="stat"><span class="stat-label">${escapeHtml(label)}</span><span class="stat-value">${escapeHtml(value(k))}</span></div>`).join("");
+
+      // Where and what to expect
+      const overviewKeys = ["Pueblo", "Start_Time", "Dogs", "Restrictions"];
+      const overview = overviewKeys.filter(has).map((k) =>
+        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${escapeHtml(value(k))}</dd></div>`).join("");
+
+      // Map and links: each link shows its full address, so leaders can see the values
+      const hasCoords = has("Latitude") && has("Longitude");
+      const coords = hasCoords ? `<p class="coords">${escapeHtml(value("Latitude"))}, ${escapeHtml(value("Longitude"))}</p>` : "";
+      const linkRows = [];
+      if (hasCoords) {
+        const mapUrl = `https://www.google.com/maps?q=${encodeURIComponent(value("Latitude") + "," + value("Longitude"))}`;
+        linkRows.push(`<div class="kv"><dt>Google Maps</dt><dd><a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mapUrl)}</a></dd></div>`);
+      }
+      [["WiS_URL", "Walks in Spain"], ["WiS_Bitly_Link", "Short link"], ["KomootBitly", "Komoot"], ["Image_URL", "Image"]]
+        .filter(([k]) => has(k) && /^https?:\/\//.test(value(k)))
+        .forEach(([k, label]) => linkRows.push(`<div class="kv"><dt>${escapeHtml(label)}</dt><dd>${link(value(k))}</dd></div>`));
+      const mapBlock = (coords || linkRows.length)
+        ? `<section class="dsec"><h4>Meeting point and links</h4>${coords}<dl class="kv-list">${linkRows.join("")}</dl></section>` : "";
+
+      // Written notes: each as a block
+      const noteKeys = ["Route_Description", "Directions", "Lunch_or_Break_Notes", "Reservation_Notes"];
+      const notes = noteKeys.filter(has).map((k) =>
+        `<div class="note-block"><h5>${escapeHtml(labelOf(k))}</h5><p>${escapeHtml(value(k))}</p></div>`).join("");
+      const notesBlock = notes ? `<section class="dsec"><h4>Notes</h4>${notes}</section>` : "";
+
+      // Files
+      const gpx = str(walk.GPX_Name);
+      const photo = str(walk.Photo_Name);
+      const fileBlock = true
+        ? `<section class="dsec"><h4>Files</h4><div class="file-cards">
+            <div class="file-card">
+              <span class="file-name">${gpx ? escapeHtml(gpx) : '<span class="muted">No GPX file</span>'}</span>
+              ${gpx ? `<button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>` : ""}
+            </div>
+            <div class="file-card">
+              <span class="file-name">${photo ? escapeHtml(photo) : '<span class="muted">No photo</span>'}</span>
+              ${photo ? `<button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>` : ""}
+            </div>
+          </div></section>` : "";
+
+      // Leaders and history (hidden from walkers and, for history, from leaders)
+      const adminKeys = ["Leader", "Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by", "X", "walkID"];
+      const admin = adminKeys.filter(has).map((k) =>
+        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${escapeHtml(value(k))}</dd></div>`).join("");
+      const adminBlock = admin ? `<section class="dsec dsec-admin"><h4>Leaders and history</h4><dl class="kv-list">${admin}</dl></section>` : "";
+
+      return `<div class="detail-grid walk-detail">
+        ${stats ? `<div class="stat-strip">${stats}</div>` : ""}
+        <div class="detail-columns">
+          ${overview ? `<section class="dsec"><h4>Overview</h4><dl class="kv-list">${overview}</dl></section>` : ""}
+          ${mapBlock}
+        </div>
+        ${notesBlock}
+        ${fileBlock}
+        ${adminBlock}
+      </div>`;
     }
 
     // The walks that match the search and grade filters. Used by both the list and the map.
