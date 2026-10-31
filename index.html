@@ -514,6 +514,14 @@
       /* Leader View: walks the logged-in leader owns get their own background */
     .walk-row.is-owned > td { background: #e8f5ec; }
     .walk-row.is-owned:hover > td { background: #d9efe1; }
+    /* Column sets: walker sees Route, Grade, Distance, Ascent, Total time, Photo.
+       Leader and admin see Walk ID, Route, Grade, Distance, Ascent, Total time, Owner, Photo (no Pueblo). */
+    body[data-wl-view="walker"] .col-id,
+    body[data-wl-view="walker"] .col-pueblo,
+    body[data-wl-view="walker"] .col-owner { display: none; }
+    body:not([data-wl-view="walker"]) .col-pueblo { display: none; }
+    /* Route description under the route name: two lines, then cut off */
+    .route-desc { margin-top: 3px; font-size: 0.8rem; font-weight: 400; color: #64748b; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>
 </head>
 
@@ -572,13 +580,14 @@
           <thead>
             <tr>
               <th class="chev-cell"><span class="sr-only">Details</span></th>
-              <th class="sortable" data-sort="id" tabindex="0" aria-sort="ascending">Walk ID <span class="sort-indicator">↑</span></th>
+              <th class="sortable col-id" data-sort="id" tabindex="0" aria-sort="ascending">Walk ID <span class="sort-indicator">↑</span></th>
               <th class="sortable" data-sort="route" tabindex="0">Route <span class="sort-indicator">↕</span></th>
-              <th class="sortable" data-sort="pueblo" tabindex="0">Pueblo <span class="sort-indicator">↕</span></th>
+              <th class="sortable col-pueblo" data-sort="pueblo" tabindex="0">Pueblo <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="grade" tabindex="0">Grade <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="distance" tabindex="0">Distance <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="ascent" tabindex="0">Ascent <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="time" tabindex="0">Total time <span class="sort-indicator">↕</span></th>
+              <th class="sortable col-owner" data-sort="owner" tabindex="0">Owner <span class="sort-indicator">↕</span></th>
               <th class="photo-cell">Photo</th>
               <th id="actions-head" hidden>Actions</th>
             </tr>
@@ -653,6 +662,7 @@
     })();
     const isAdmin = VIEW === "admin";
     const isLeader = VIEW === "leader";
+    document.body.dataset.wlView = VIEW;
     let myLeaderId = isLeader ? (params.get("leader_id") || "") : "";
 
     let walksDb = null;
@@ -1064,6 +1074,7 @@
       if (key === "id") return str(w.id);
       if (key === "route") return str(w.Route_Name).toLowerCase();
       if (key === "pueblo") return str(w.Pueblo).toLowerCase();
+      if (key === "owner") return str(w.Leader).toLowerCase();
       if (key === "grade") return GRADE_RANK[str(w.Grade).toUpperCase()] ?? 99;
       if (key === "distance" || key === "ascent") { const n = parseFloat(str(w[key === "distance" ? "Distance" : "Ascent"]).replace(",", ".")); return Number.isFinite(n) ? n : null; }
       if (key === "time") { const m = str(w.Total_Time).match(/(\d+)\s*h\s*(\d+)?/i); return m ? Number(m[1]) * 60 + Number(m[2] || 0) : null; }
@@ -1130,18 +1141,19 @@
               <svg class="chev-up" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>
             </button>
           </td>
-          <td class="walk-id">${escapeHtml(w.id)}</td>
-          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
-          <td>${escapeHtml(w.Pueblo) || "–"}</td>
+          <td class="walk-id col-id">${escapeHtml(w.id)}</td>
+          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}${String(w.Route_Description || "").trim() ? `<div class="route-desc">${escapeHtml(w.Route_Description)}</div>` : ""}</td>
+          <td class="col-pueblo">${escapeHtml(w.Pueblo) || "–"}</td>
           <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
           <td>${escapeHtml(w.Distance) || "–"}</td>
           <td>${escapeHtml(w.Ascent) || "–"}</td>
           <td>${escapeHtml(w.Total_Time) || "–"}</td>
+          <td class="col-owner">${escapeHtml(w.Leader) || "–"}</td>
           <td class="photo-cell">${walkThumbHtml(w)}</td>
           ${VIEW === "walker" ? "" : `<td class="actions-cell">${actions.join(" ")}</td>`}
         </tr>`);
         if (open) {
-          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 9 : 10}">${detailGridHtml(w)}</td></tr>`);
+          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 7 : 10}">${detailGridHtml(w)}</td></tr>`);
         }
       }
       document.getElementById("walks-body").innerHTML = html.join("");
