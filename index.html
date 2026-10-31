@@ -511,7 +511,10 @@
       .form-grid { grid-template-columns: 1fr; }
       .toolbar input[type="search"], .toolbar select { min-width: 0; width: 100%; }
     }
-  </style>
+      /* Leader View: walks the logged-in leader owns get their own background */
+    .walk-row.is-owned > td { background: #e8f5ec; }
+    .walk-row.is-owned:hover > td { background: #d9efe1; }
+</style>
 </head>
 
 <body>
@@ -984,6 +987,36 @@
       return unassigned || current === myName; // walks they own, or walks with no valid leader
     }
 
+    // A walk with no valid leader can be taken on: it moves to the logged-in leader
+    // Leader View: walks the logged-in leader owns (listed as leader on the walk)
+    function isOwnedWalk(w) {
+      if (!isLeader) return false;
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      const myName = me ? fullName(me) : "";
+      return !!myName && str(w.Leader) === myName;
+    }
+    function isUnassignedWalk(w) {
+      const current = str(w.Leader);
+      const validNames = new Set(leaders.map(fullName));
+      return !current || !validNames.has(current);
+    }
+    function canTakeOwnership(w) {
+      if (!isLeader || !isUnassignedWalk(w)) return false;
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      return !!(me && fullName(me));
+    }
+    async function takeOwnership(w) {
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      const myName = me ? fullName(me) : "";
+      if (!myName) return;
+      if (!confirm(`Take ownership of walk ${w.id} (${w.Route_Name || "no name"})? It will be listed with ${myName} as leader.`)) return;
+      try {
+        await update(ref(walksDb, "walks/" + w.id), { Leader: myName });
+      } catch (err) {
+        alert("This walk could not be taken on. Please try again, or ask an admin.");
+      }
+    }
+
     // Walk photos: the uploaded photo (walk_photos/{walk id}) first, else the walk's Image URL, else a mountain placeholder
     const WALK_PHOTO_PLACEHOLDER = '<svg viewBox="0 0 120 80" aria-hidden="true" focusable="false"><circle cx="92" cy="22" r="7" fill="#f4d58d"/><path d="M0 80 L34 30 L52 52 L70 26 L120 80 Z" fill="#9dbaa5"/><path d="M20 80 L50 40 L66 60 L84 38 L108 80 Z" fill="#5f8a6e"/><path d="M50 40 L56 48 L50 46 L44 50 Z" fill="#ffffff" opacity="0.85"/><path d="M70 26 L76 34 L70 32 L64 35 Z" fill="#ffffff" opacity="0.85"/></svg>';
     const walkPhotoCache = new Map();
@@ -1084,11 +1117,13 @@
         if (isAdmin) {
           actions.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
           actions.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+        } else if (canTakeOwnership(w)) {
+          actions.push(`<button type="button" class="btn btn-small" data-action="take" data-id="${escapeHtml(w.id)}">Take ownership</button>`);
         } else if (isLeader && canRequestChange(w)) {
           actions.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
         }
 
-        html.push(`<tr class="walk-row ${open ? "is-open" : ""}" data-id="${escapeHtml(w.id)}">
+        html.push(`<tr class="walk-row ${open ? "is-open" : ""} ${isOwnedWalk(w) ? "is-owned" : ""}" data-id="${escapeHtml(w.id)}">
           <td class="chev-cell">
             <button type="button" class="chev" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} details for walk ${escapeHtml(w.id)}" data-action="toggle" data-id="${escapeHtml(w.id)}">
               <svg class="chev-down" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1615,6 +1650,7 @@
       if (btn.dataset.action === "download-gpx" || btn.dataset.action === "view-photo") return openWalkFile(walk.id, btn.dataset.action);
       if (btn.dataset.action === "edit" && isAdmin) { closeWalkCard(); return openDialog("edit", walk); }
       if (btn.dataset.action === "request" && isLeader) { closeWalkCard(); return openDialog("request", walk); }
+      if (btn.dataset.action === "take" && isLeader) { closeWalkCard(); return takeOwnership(walk); }
       if (btn.dataset.action === "delete" && isAdmin) {
         const used = bookingCountFor(walk.id);
         const pending = pendingFor(walk.id).length;
@@ -1643,6 +1679,8 @@
       if (isAdmin) {
         buttons.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
         buttons.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+      } else if (canTakeOwnership(w)) {
+        buttons.push(`<button type="button" class="btn btn-small" data-action="take" data-id="${escapeHtml(w.id)}">Take ownership</button>`);
       } else if (isLeader && canRequestChange(w)) {
         const waiting = pendingFor(w.id).length > 0;
         buttons.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
