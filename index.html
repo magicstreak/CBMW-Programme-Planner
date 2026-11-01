@@ -942,7 +942,7 @@
       // Leaders and history (hidden from walkers and, for history, from leaders)
       const adminKeys = ["Leader", "Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by", "X", "walkID"];
       const admin = adminKeys.filter(has).map((k) =>
-        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${escapeHtml(value(k))}</dd></div>`).join("");
+        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${k === "Last_offered_or_led_by" ? "" : escapeHtml(value(k))}</dd></div>`).join("");
       const adminBlock = admin ? `<section class="dsec dsec-admin"><h4>Leaders and history</h4><dl class="kv-list">${admin}</dl></section>` : "";
 
       return `<div class="detail-grid walk-detail">
@@ -1785,7 +1785,8 @@
 
       // Leaders and history: admin only
       const adminKeys = ["Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by"];
-      const adminRows = isAdmin ? adminKeys.filter(show).map((k) => info(labelOf(k), escapeHtml(value(k)))).join("") : "";
+      // Last offered or led by: the label stays, the value is left blank in admin view
+      const adminRows = isAdmin ? adminKeys.filter(show).map((k) => info(labelOf(k), k === "Last_offered_or_led_by" ? "" : escapeHtml(value(k)))).join("") : "";
       const admin = adminRows ? `<div class="walk-section-title">Leaders and history</div><div class="walk-info">${adminRows}</div>` : "";
 
       // Card actions, same rules as the table
