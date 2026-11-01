@@ -108,6 +108,9 @@
     .check-item input[type=checkbox] { width: auto; margin: 0; flex: none; }
     .request-item .who { font-weight: 600; }
     .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
+    .reject-box { margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fdf2f2; }
+    .reject-box label { display: block; }
+    .reject-box .reject-reason { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; margin-top: 4px; }
     .my-requests > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
     .my-requests > summary::-webkit-details-marker { display: none; }
     .my-requests > summary::after { content: "▾"; color: var(--text-muted); font-size: 1rem; }
@@ -673,6 +676,8 @@
     let bookingsDb = null;
     let walks = [];            // sorted by Walk ID
     let requests = {};         // walk_requests/{id}
+    let rejectingRequestId = null; // request whose inline reject box is open
+    let rejectReasonDraft = "";    // reason typed so far (kept across re-renders)
     let bookings = {};         // walk_bookings (read only)
     let leaders = [];          // leaders (read only, for the requester picker and names)
     const expandedWalks = new Set();
@@ -1207,6 +1212,14 @@
               : `<button type="button" class="btn btn-small btn-primary" data-action="review" data-request="${escapeHtml(r.request_id)}">Review</button>`}
             <button type="button" class="btn btn-small btn-danger" data-action="reject" data-request="${escapeHtml(r.request_id)}">Reject</button>
           </div>
+          ${rejectingRequestId === r.request_id ? `<div class="reject-box">
+            <label class="meta" for="reject-reason-${escapeHtml(r.request_id)}">Reason for rejecting (optional)</label>
+            <input type="text" id="reject-reason-${escapeHtml(r.request_id)}" class="reject-reason" data-request="${escapeHtml(r.request_id)}" value="${escapeHtml(rejectReasonDraft)}" />
+            <div class="request-actions">
+              <button type="button" class="btn btn-small btn-danger" data-action="reject-confirm" data-request="${escapeHtml(r.request_id)}">Confirm reject</button>
+              <button type="button" class="btn btn-small" data-action="reject-cancel" data-request="${escapeHtml(r.request_id)}">Cancel</button>
+            </div>
+          </div>` : ""}
         </div>`;
       }).join("") : `<p class="empty" style="padding:8px 0">No change requests waiting.</p>`;
     }
@@ -1874,6 +1887,10 @@
     }
 
     // Pending request buttons (admin)
+    document.getElementById("pending-list").addEventListener("input", (e) => {
+      if (e.target.classList.contains("reject-reason")) rejectReasonDraft = e.target.value;
+    });
+
     document.getElementById("pending-list").addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn || !isAdmin) return;
@@ -1962,13 +1979,29 @@
           });
         }
         if (btn.dataset.action === "reject") {
-          const reason = prompt("Reason for rejecting (optional):", "");
-          if (reason === null) return;
+          // Opens an inline reason box (no browser pop-up, which some embedded pages block)
+          rejectingRequestId = request.request_id;
+          rejectReasonDraft = "";
+          renderPending();
+          document.getElementById("reject-reason-" + request.request_id)?.focus();
+          return;
+        }
+        if (btn.dataset.action === "reject-cancel") {
+          rejectingRequestId = null;
+          rejectReasonDraft = "";
+          renderPending();
+          return;
+        }
+        if (btn.dataset.action === "reject-confirm") {
+          const reason = document.getElementById("reject-reason-" + request.request_id)?.value ?? rejectReasonDraft;
           await update(ref(walksDb, "walk_requests/" + request.request_id), {
             status: "rejected",
             reason: str(reason),
             reviewed_at: new Date().toISOString(),
           });
+          rejectingRequestId = null;
+          rejectReasonDraft = "";
+          return;
         }
       } catch (err) {
         console.error("Review failed:", err);
