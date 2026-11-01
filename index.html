@@ -522,6 +522,10 @@
     body:not([data-wl-view="walker"]) .col-pueblo { display: none; }
     /* Route description under the route name: two lines, then cut off */
     .route-desc { margin-top: 3px; font-size: 0.8rem; font-weight: 400; color: #64748b; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Fields the leader changed in a review: amber border so the admin can see them at a glance */
+    .form-field.requested-change input, .form-field.requested-change select, .form-field.requested-change textarea {
+      border: 2px solid #f59e0b; background: #fffbeb; }
+    .form-field.requested-change > label::after { content: " · changed"; color: #b45309; font-weight: 600; font-size: 0.8rem; }
 </style>
 </head>
 
@@ -1198,7 +1202,9 @@
           <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
           ${changeListHtml(r)}
           <div class="request-actions">
-            <button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>
+            ${r.request_type === "new"
+              ? `<button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>`
+              : `<button type="button" class="btn btn-small btn-primary" data-action="review" data-request="${escapeHtml(r.request_id)}">Review</button>`}
             <button type="button" class="btn btn-small btn-danger" data-action="reject" data-request="${escapeHtml(r.request_id)}">Reject</button>
           </div>
         </div>`;
@@ -1318,6 +1324,7 @@
     const form = document.getElementById("walk-form");
     let dialogMode = null;   // "create" | "edit" | "request"
     let dialogWalk = null;
+    let dialogRequest = null; // change request being reviewed through the admin edit form
 
     // Dropdown options: fixed list for Grade; Leader from the leaders database (scheduler app);
     // SCR from the values already used in the walks data. The current value is always included.
@@ -1367,16 +1374,17 @@
         const type = "text";
         control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
       }
-      return `<div class="form-field ${field.full ? "full" : ""}">
+      return `<div class="form-field ${field.full ? "full" : ""} ${field.changed ? "requested-change" : ""}">
         <label for="${id}">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>
         ${control}
         ${field.hint ? `<div class="hint">${escapeHtml(field.hint)}</div>` : ""}
       </div>`;
     }
 
-    function openDialog(mode, walk = null) {
+    function openDialog(mode, walk = null, request = null) {
       dialogMode = mode;
       dialogWalk = walk;
+      dialogRequest = request;
       const title = document.getElementById("modal-title");
       const lede = document.getElementById("modal-lede");
       const submit = document.getElementById("modal-submit");
@@ -1387,6 +1395,11 @@
         title.textContent = "Add walk";
         lede.textContent = "Creates a new walk in the walks database.";
         submit.textContent = "Add walk";
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
+      } else if (mode === "edit" && request) {
+        title.textContent = `Review change request: walk ${walk.id}`;
+        lede.textContent = "The leader's requested changes are filled in below, with what they were. Change any value to override it, then approve. Nothing changes until you approve.";
+        submit.textContent = "Approve and save";
         fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else if (mode === "edit") {
         title.textContent = `Edit walk ${walk.id}`;
@@ -1409,12 +1422,18 @@
 
       const gridFields = fields.filter((f) => f.type !== "file");
       const fileFields = fields.filter((f) => f.type === "file");
+      const asked = request?.changes || {};
+      const wasOf = (key) => str(request?.before?.[key] ?? walk?.[key]);
       document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
           : mode === "new" ? ""
+          : (request && f.key in asked) ? str(asked[f.key])
           : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
-        return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
+        const field = request && f.key in asked
+          ? { ...f, changed: true, hint: `Leader asked for this. Was: ${wasOf(f.key) || "(blank)"}` }
+          : f;
+        return fieldHtml(field, value, f.key === "walk_key" && mode === "edit");
       }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
       wireFileInputs();
       modal.hidden = false;
@@ -1468,6 +1487,7 @@
     }
 
     function closeDialog() {
+      dialogRequest = null;
       modal.hidden = true;
       dialogMode = null;
       dialogWalk = null;
@@ -1536,8 +1556,28 @@
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
           Object.assign(data, fileNameFields(files));
+          const req = dialogRequest;
+          if (req) {
+            // Files the leader sent travel with the request unless the admin uploads a replacement here
+            if (!files.gpx && "GPX_Text" in (req.changes || {})) files.gpx = req.changes.GPX_Text ? { name: req.changes.GPX_Name || "", text: req.changes.GPX_Text } : { remove: true };
+            if (!files.photo && "Photo_Data" in (req.changes || {})) files.photo = req.changes.Photo_Data ? { name: req.changes.Photo_Name || "", data: req.changes.Photo_Data } : { remove: true };
+            Object.assign(data, fileNameFields(files));
+          }
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
           await saveFileChanges(dialogWalk.id, files);
+          if (req) {
+            const overrides = Object.keys(req.changes || {})
+              .filter((k) => !["GPX_Text", "GPX_Name", "Photo_Data", "Photo_Name"].includes(k))
+              .filter((k) => record[k] !== str(req.changes[k]));
+            const applied = {};
+            for (const f of EDITABLE_FIELDS) if (f.key in (req.changes || {})) applied[f.key] = record[f.key];
+            await update(ref(walksDb, "walk_requests/" + req.request_id), {
+              status: "approved",
+              reviewed_changes: applied,
+              admin_overrides: overrides,
+              reviewed_at: new Date().toISOString(),
+            });
+          }
         } else if (mode === "new") {
           if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
           const changes = {};
@@ -1863,6 +1903,12 @@
       }
 
       try {
+        if (btn.dataset.action === "review") {
+          const walk = walkById(request.walk_id);
+          if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
+          openDialog("edit", walk, request);
+          return;
+        }
         if (btn.dataset.action === "approve" && request.request_type === "new") {
           const suggested = nextWalkId();
           const typedKey = prompt("Walk key for the new walk (e.g. walk_610):", suggested);
