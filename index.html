@@ -108,6 +108,9 @@
     .check-item input[type=checkbox] { width: auto; margin: 0; flex: none; }
     .request-item .who { font-weight: 600; }
     .request-item .meta { color: var(--text-muted); font-size: 0.85rem; margin: 2px 0 6px; }
+    .reject-box { margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fdf2f2; }
+    .reject-box label { display: block; }
+    .reject-box .reject-reason { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; margin-top: 4px; }
     .my-requests > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
     .my-requests > summary::-webkit-details-marker { display: none; }
     .my-requests > summary::after { content: "▾"; color: var(--text-muted); font-size: 1rem; }
@@ -120,6 +123,7 @@
     .request-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .picker-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .picker-bar[hidden] { display: none; }
     .table-wrap { overflow-x: auto; }
     .walks-table th.photo-cell, .walks-table td.photo-cell { width: 128px; }
     .walks-table th.sortable { cursor: pointer; user-select: none; }
@@ -133,14 +137,14 @@
     .walk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .walk-thumb-empty { background: linear-gradient(180deg, #dfeee6 0%, #f4f7f2 100%); }
     .walk-thumb-empty svg { width: 52%; max-width: 64px; height: auto; }
-    .walks-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .walks-table { width: 100%; border-collapse: collapse; font-size: 1rem; }
     .walks-table th, .walks-table td {
       text-align: left;
       padding: 10px 8px;
       border-bottom: 1px solid var(--border);
       vertical-align: top;
     }
-    .walks-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .walks-table th { color: var(--text-muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
     .walks-table tbody tr.walk-row { cursor: pointer; }
     .walks-table tbody tr.walk-row:hover > td { background: #f5faf6; }
     .walks-table tr.is-open > td { background: #f0f9f3; }
@@ -161,6 +165,9 @@
     /* List / Map toggle */
     .view-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
     .walks-map-panel { margin-top: 12px; }
+    .walk-pin { font-size: 0.9rem; line-height: 1.4; max-height: 320px; overflow-y: auto; }
+    .walk-pin-rows { margin-top: 6px; display: grid; gap: 4px; }
+    .walk-pin-label { color: #5b6672; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
     #walks-map {
       width: 100%;
       height: max(480px, calc(100vh - 280px));
@@ -175,11 +182,258 @@
     .actions-cell { white-space: nowrap; }
 
     .details-row > td { padding: 14px 16px 18px 20px; box-shadow: inset 4px 0 0 var(--primary); }
-    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
-    .detail-grid .wide { grid-column: 1 / -1; }
-    .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-    .detail-value { white-space: pre-line; word-break: break-word; }
-    .detail-value a { color: var(--primary); }
+    .detail-grid { display: grid; gap: 18px; min-width: 0; }
+    .walk-detail .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+/* ---- scheduler lines 1468-1480 ---- */
+    /* ========================================================= WALKER DETAIL CARD ========================================================= */
+    .detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    .detail-overlay.active { display: flex; }
+    .detail-card {
+      width: 100%;
+      max-width: 620px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: #fff;
+      border-radius: var(--radius-panel);
+      padding: 26px 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    }
+/* ---- scheduler lines 1520-1530 ---- */
+    .detail-close:hover { color: var(--text); }
+    .detail-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+/* ---- scheduler lines 1613-1760 ---- */
+    .detail-card.walk-card-wrap { padding: 0; overflow-y: auto; overflow-x: hidden; }
+    .walk-card-header {
+      background: #2d5b3e;
+      color: #fff;
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .walk-card-header h3 { margin: 0; font-size: 1.25rem; line-height: 1.25; color: #fff; }
+    .date-time-cell { white-space: nowrap; }
+    .dt-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.3;
+    }
+    .dt-line + .dt-line { margin-top: 3px; }
+    .dt-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .dt-icon svg { display: block; }
+    .dt-line > span:not(.dt-icon) { font-size: 0.9rem; }
+    .dt-line strong { font-weight: 600; }
+    .walk-card-date { margin-top: 10px; font-size: 1.1rem; font-weight: 600; opacity: 1; }
+    .walk-card-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.6rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .walk-card-head-actions { display: flex; align-items: center; gap: 2px; }
+    .walk-card-expand {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      opacity: 0.9;
+    }
+    .walk-card-expand:hover { opacity: 1; background: rgba(255, 255, 255, 0.12); }
+    /* Expanded card: wider and taller, for desktop screens only */
+    .detail-card.walk-card-wrap.expanded {
+      width: calc(100vw - 48px);
+      max-width: 1200px;
+      max-height: calc(100vh - 40px);
+    }
+    @media (max-width: 640px) { .walk-card-expand { display: none; } }
+    .walk-card-body { padding: 20px 24px 24px; color: #1f2937; }
+    .walk-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .walk-stat { background: #e8f1eb; border-radius: 12px; padding: 12px 14px; }
+    .walk-stat-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2d5b3e;
+    }
+    .walk-stat-value { font-size: 1.1rem; margin-top: 4px; }
+    .walk-quote {
+      margin: 0 0 18px;
+      padding: 4px 14px;
+      border-left: 4px solid #d97706;
+      color: #374151;
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+    .walk-quote-break { display: block; height: 8px; }
+    .walk-comments { margin: 0 0 18px; font-size: 0.95rem; color: #374151; }
+    .walk-comments p { margin: 4px 0 0; white-space: pre-wrap; }
+    .walk-section-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4b5563;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+      margin: 18px 0 10px;
+    }
+    .walk-section-title:first-child { margin-top: 0; }
+    .leader-line { display: block; }
+    .leader-identify { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 16px 0; color: #4b5563; font-size: 0.95rem; }
+    .leader-identify input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; min-width: 240px; }
+    .leader-identify[hidden] { display: none; }
+    .leader-line + .leader-line { margin-top: 4px; }
+    /* Desktop: each leader on one line (name, phone numbers, WhatsApp badge); phones may wrap */
+    .leader-line { white-space: nowrap; }
+    @media (max-width: 640px) { .leader-line { white-space: normal; } }
+    .whatsapp-pref {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 600;
+      font-size: 0.85em;
+    }
+    .walk-info-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 0.95rem;
+    }
+    .walk-info-label { color: #4b5563; font-weight: 500; }
+    .walk-info-value { word-break: break-word; }
+    .walk-info-value a { color: #2d5b3e; text-decoration: underline; }
+    .walk-directions {
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: #4b5563;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .walk-dogs {
+      margin-top: 18px;
+      background: #fefce8;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      color: #78350f;
+      font-size: 0.95rem;
+    }
+    @media (max-width: 600px) {
+      .walk-info-row { grid-template-columns: 90px 1fr; }
+    }
+    /* Walker View admin table: read-only, hidden columns stay hidden even though filter-field and cells use display rules */
+    .filter-field[hidden],
+    .offers-table th[hidden],
+    .offers-table td[hidden] { display: none !important; }
+    th[data-leader-sort] .sort-indicator { display: none; }
+    .past-walks-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; align-self: center; }
+/* ---- scheduler lines 1963-1963 ---- */
+    .walk-meeting-map { display: block; width: 100%; height: 240px; border: 1px solid var(--border); border-radius: 10px; margin: 10px 0 4px; }
+/* ---- scheduler lines 2060-2073 ---- */
+    .walk-thumb {
+      width: 100%; max-width: 152px; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden;
+      background: #eef2f0; color: #6b7280; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;
+    }
+    .walk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .walk-card-photo {
+      width: 100%; aspect-ratio: 16 / 9; max-height: 260px; border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+      background: #eef2f0; color: #6b7280; font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+    }
+    .walk-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* Placeholder: soft sky with a mountain line-drawing */
+    .walk-thumb-empty { background: linear-gradient(180deg, #dfeee6 0%, #f4f7f2 100%) !important; }
+    .walk-thumb-empty svg { width: 46%; max-width: 96px; height: auto; }
+    .walk-card-photo.walk-thumb-empty svg { width: 22%; max-width: 140px; }
+    /* Card photo: full width of the card, not the list thumbnail size */
+    .walk-card-photo.walk-thumb { max-width: none; width: 100%; aspect-ratio: auto; height: 0; padding-bottom: 56.25%; position: relative; border-radius: 12px; }
+    .walk-card-photo.walk-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .walk-card-photo.walk-thumb svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+/* ---- scheduler lines 2237-2252 ---- */
+    .walk-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .walk-stat { padding: 7px 9px; border-radius: 8px; min-width: 0; }
+    .walk-stat-label { font-size: 0.6rem; letter-spacing: 0.06em; }
+    .walk-stat-value {
+      font-size: 0.85rem;
+      margin-top: 2px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 650px) {
+      .walk-stats { grid-template-columns: 1fr; }
+      .walk-stat { padding: 6px 10px; }
+    }
+    /* Walks Library card: actions row under the body */
+    .walk-card-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 24px 22px; }
+    .walk-card-actions:empty { display: none; }
+    .walk-info-row a { word-break: break-all; }
+    @media (max-width: 600px) { .walk-card-actions { padding: 4px 20px 18px; } }
+    .stat { background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--primary); border-radius: var(--radius-card); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--primary); word-break: break-word; }
+    .walk-detail .detail-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .dsec { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); padding: 12px 14px; min-width: 0; }
+    .dsec h4 { margin: 0 0 10px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    .dsec-admin { background: var(--bg-muted); }
+    .kv dd a { color: var(--primary); overflow-wrap: anywhere; }
+    .kv-list { margin: 0; display: grid; gap: 8px; }
+    .kv dt { font-size: 0.75rem; color: var(--text-muted); }
+    .kv dd { margin: 0; white-space: pre-line; word-break: break-word; }
+    .coords { margin: 0 0 8px; font-variant-numeric: tabular-nums; color: var(--text); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-block; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--primary); color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+    .chip:hover { background: var(--primary); color: #fff; }
+    .note-block + .note-block { margin-top: 12px; }
+    .note-block h5 { margin: 0 0 4px; font-size: 0.8rem; color: var(--primary); }
+    .note-block p { margin: 0; white-space: pre-line; border-left: 3px solid var(--primary); padding-left: 10px; word-break: break-word; }
+    .file-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .file-card { border: 1px dashed var(--border); border-radius: var(--radius-card); padding: 10px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
+    .file-name { word-break: break-all; font-size: 0.9rem; }
+    .detail-grid a { color: var(--primary); }
 
     .pill {
       display: inline-block;
@@ -257,10 +511,25 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
     @media (max-width: 640px) {
-      .form-grid, .detail-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
       .toolbar input[type="search"], .toolbar select { min-width: 0; width: 100%; }
     }
-  </style>
+      /* Leader View: walks the logged-in leader owns get their own background */
+    .walk-row.is-owned > td { background: #e8f5ec; }
+    .walk-row.is-owned:hover > td { background: #d9efe1; }
+    /* Column sets: walker sees Route, Grade, Distance, Ascent, Total time, Photo.
+       Leader and admin see Walk ID, Route, Grade, Distance, Ascent, Total time, Owner, Photo (no Pueblo). */
+    body[data-wl-view="walker"] .col-id,
+    body[data-wl-view="walker"] .col-pueblo,
+    body[data-wl-view="walker"] .col-owner { display: none; }
+    body:not([data-wl-view="walker"]) .col-pueblo { display: none; }
+    /* Route description under the route name: two lines, then cut off */
+    .route-desc { margin-top: 3px; font-size: 0.9rem; font-weight: 400; color: #64748b; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Fields the leader changed in a review: amber border so the admin can see them at a glance */
+    .form-field.requested-change input, .form-field.requested-change select, .form-field.requested-change textarea {
+      border: 2px solid #f59e0b; background: #fffbeb; }
+    .form-field.requested-change > label::after { content: " · changed"; color: #b45309; font-weight: 600; font-size: 0.8rem; }
+</style>
 </head>
 
 <body>
@@ -318,13 +587,14 @@
           <thead>
             <tr>
               <th class="chev-cell"><span class="sr-only">Details</span></th>
-              <th class="sortable" data-sort="id" tabindex="0" aria-sort="ascending">Walk ID <span class="sort-indicator">↑</span></th>
+              <th class="sortable col-id" data-sort="id" tabindex="0" aria-sort="ascending">Walk ID <span class="sort-indicator">↑</span></th>
               <th class="sortable" data-sort="route" tabindex="0">Route <span class="sort-indicator">↕</span></th>
-              <th class="sortable" data-sort="pueblo" tabindex="0">Pueblo <span class="sort-indicator">↕</span></th>
+              <th class="sortable col-pueblo" data-sort="pueblo" tabindex="0">Pueblo <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="grade" tabindex="0">Grade <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="distance" tabindex="0">Distance <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="ascent" tabindex="0">Ascent <span class="sort-indicator">↕</span></th>
               <th class="sortable" data-sort="time" tabindex="0">Total time <span class="sort-indicator">↕</span></th>
+              <th class="sortable col-owner" data-sort="owner" tabindex="0">Owner <span class="sort-indicator">↕</span></th>
               <th class="photo-cell">Photo</th>
               <th id="actions-head" hidden>Actions</th>
             </tr>
@@ -338,6 +608,11 @@
         <div id="walks-map" role="region" aria-label="Map of walk locations"></div>
       </section>
     </main>
+  </div>
+
+  <!-- Walk card popup, opened by clicking a walk row (same structure as the scheduler's walk card) -->
+  <div class="detail-overlay" id="walk-overlay">
+    <div class="detail-card walk-card-wrap" id="walk-card" role="dialog" aria-modal="true" aria-labelledby="detail-title"></div>
   </div>
 
   <!-- Add / edit / request-change dialog -->
@@ -394,12 +669,15 @@
     })();
     const isAdmin = VIEW === "admin";
     const isLeader = VIEW === "leader";
+    document.body.dataset.wlView = VIEW;
     let myLeaderId = isLeader ? (params.get("leader_id") || "") : "";
 
     let walksDb = null;
     let bookingsDb = null;
     let walks = [];            // sorted by Walk ID
     let requests = {};         // walk_requests/{id}
+    let rejectingRequestId = null; // request whose inline reject box is open
+    let rejectReasonDraft = "";    // reason typed so far (kept across re-renders)
     let bookings = {};         // walk_bookings (read only)
     let leaders = [];          // leaders (read only, for the requester picker and names)
     const expandedWalks = new Set();
@@ -439,6 +717,9 @@
     ];
     // Leader view (details and change requests) does not show the last walked / last offered history
     const LEADER_HIDDEN_FIELDS = ["Season_last_walked_or_offered", "Last_offered_or_led_by"];
+    // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
+    const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
+      "Season_last_walked_or_offered", "Last_offered_or_led_by", "WiS_Bitly_Link", "KomootBitly", "walkID"];
     // File uploads: shown in the edit and request forms. The walk record keeps the file name; the file itself is stored beside it.
     const FILE_FIELDS = [
       { key: "GPX", nameKey: "GPX_Name", type: "file", label: "GPX route file", accept: ".gpx,application/gpx+xml,text/xml" },
@@ -572,10 +853,13 @@
     function renderPicker() {
       if (!isLeader) return;
       const msg = document.getElementById("picker-msg");
+      const input = document.getElementById("leader-email");
       const me = leaders.find((l) => l.leader_id === myLeaderId);
+      // Once identified, the email is locked and the leader can use Change to switch
+      input.disabled = !!me;
       if (me) {
         msg.hidden = false;
-        msg.textContent = `Showing as ${fullName(me)} (${me.leader_id})`;
+        msg.textContent = `I am currently logged in as ${fullName(me)}`;
       } else if (msg.dataset.notFound === "1") {
         msg.hidden = false;
         msg.textContent = "No leader found with that email address.";
@@ -585,12 +869,14 @@
       }
     }
 
+
     // Leader view: the leader types their email and the page finds their record. The email is never shown back.
     function identifyByEmail() {
       const typed = str(document.getElementById("leader-email").value).toLowerCase();
       if (!typed) return;
       const match = leaders.find((l) => str(l.email_add).toLowerCase() === typed);
       myLeaderId = match ? match.leader_id : "";
+      if (match) rememberLeaderEmail(typed);
       document.getElementById("picker-msg").dataset.notFound = match ? "" : "1";
       renderAll();
     }
@@ -604,40 +890,76 @@
     }
 
     function detailGridHtml(walk) {
-      // Files: the names are on the walk record; the contents load only when asked for
-      const fileCell = (() => {
-        const gpx = str(walk.GPX_Name);
-        const photo = str(walk.Photo_Name);
-        return `<div class="wide">
-          <div class="detail-label">Files</div>
-          <div class="detail-value file-links">
-            ${gpx
-              ? `<span>${escapeHtml(gpx)}</span> <button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>`
-              : `<span class="muted">No GPX file</span>`}
-            <span class="file-sep"></span>
-            ${photo
-              ? `<span>${escapeHtml(photo)}</span> <button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>`
-              : `<span class="muted">No photo</span>`}
-          </div>
-        </div>`;
-      })();
-      const cell = (f) => {
-        const value = str(walk[f.key]);
-        const shown = !value ? '<span class="muted">–</span>'
-          : f.type === "url" && /^https?:\/\//.test(value)
-            ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`
-            : escapeHtml(value);
-        return `<div class="${f.full ? "wide" : ""}">
-          <div class="detail-label">${escapeHtml(f.label)}</div>
-          <div class="detail-value">${shown}</div>
-        </div>`;
-      };
-      // Walker view hides these details; leader view also hides the last walked / last offered history; admin keeps all
-      const WALKER_HIDDEN = ["Leader", "Permitted_Leaders", "Start_Time", "Lunch_or_Break_Notes", "Reservation_Notes",
-        "Season_last_walked_or_offered", "Last_offered_or_led_by", "walkID"];
       const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
-      const fields = EDITABLE_FIELDS.filter((f) => !hidden.includes(f.key));
-      return `<div class="detail-grid">${fields.map(cell).join("")}${fileCell}</div>`;
+      const visible = new Set(EDITABLE_FIELDS.map((f) => f.key).filter((k) => !hidden.includes(k)));
+      const labelOf = (k) => (EDITABLE_FIELDS.find((f) => f.key === k) || {}).label || k;
+      const value = (k) => str(walk[k]);
+      const has = (k) => visible.has(k) && value(k) !== "";
+      const link = (v) => /^https?:\/\//.test(v)
+        ? `<a href="${escapeHtml(v)}" target="_blank" rel="noopener noreferrer">${escapeHtml(v)}</a>`
+        : escapeHtml(v);
+
+      // Headline numbers
+      const statKeys = [["Grade", "Grade"], ["Distance", "Distance"], ["Ascent", "Ascent"], ["Total_Time", "Total time"], ["Terrain", "Terrain"], ["Scr", "SCR"]];
+      const stats = statKeys.filter(([k]) => has(k)).map(([k, label]) =>
+        `<div class="stat"><span class="stat-label">${escapeHtml(label)}</span><span class="stat-value">${escapeHtml(value(k))}</span></div>`).join("");
+
+      // Where and what to expect
+      const overviewKeys = ["Pueblo", "Start_Time", "Dogs", "Restrictions"];
+      const overview = overviewKeys.filter(has).map((k) =>
+        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${escapeHtml(value(k))}</dd></div>`).join("");
+
+      // Map and links: each link shows its full address, so leaders can see the values
+      const hasCoords = has("Latitude") && has("Longitude");
+      const coords = hasCoords ? `<p class="coords">${escapeHtml(value("Latitude"))}, ${escapeHtml(value("Longitude"))}</p>` : "";
+      const linkRows = [];
+      if (hasCoords) {
+        const mapUrl = `https://www.google.com/maps?q=${encodeURIComponent(value("Latitude") + "," + value("Longitude"))}`;
+        linkRows.push(`<div class="kv"><dt>Google Maps</dt><dd><a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mapUrl)}</a></dd></div>`);
+      }
+      [["WiS_URL", "Walks in Spain"], ["WiS_Bitly_Link", "Short link"], ["KomootBitly", "Komoot"], ["Image_URL", "Image"]]
+        .filter(([k]) => has(k) && /^https?:\/\//.test(value(k)))
+        .forEach(([k, label]) => linkRows.push(`<div class="kv"><dt>${escapeHtml(label)}</dt><dd>${link(value(k))}</dd></div>`));
+      const mapBlock = (coords || linkRows.length)
+        ? `<section class="dsec"><h4>Meeting point and links</h4>${coords}<dl class="kv-list">${linkRows.join("")}</dl></section>` : "";
+
+      // Written notes: each as a block
+      const noteKeys = ["Route_Description", "Directions", "Lunch_or_Break_Notes", "Reservation_Notes"];
+      const notes = noteKeys.filter(has).map((k) =>
+        `<div class="note-block"><h5>${escapeHtml(labelOf(k))}</h5><p>${escapeHtml(value(k))}</p></div>`).join("");
+      const notesBlock = notes ? `<section class="dsec"><h4>Notes</h4>${notes}</section>` : "";
+
+      // Files
+      const gpx = str(walk.GPX_Name);
+      const photo = str(walk.Photo_Name);
+      const fileBlock = true
+        ? `<section class="dsec"><h4>Files</h4><div class="file-cards">
+            <div class="file-card">
+              <span class="file-name">${gpx ? escapeHtml(gpx) : '<span class="muted">No GPX file</span>'}</span>
+              ${gpx ? `<button type="button" class="btn btn-small" data-action="download-gpx" data-id="${escapeHtml(walk.id)}">Download GPX</button>` : ""}
+            </div>
+            <div class="file-card">
+              <span class="file-name">${photo ? escapeHtml(photo) : '<span class="muted">No photo</span>'}</span>
+              ${photo ? `<button type="button" class="btn btn-small" data-action="view-photo" data-id="${escapeHtml(walk.id)}">View photo</button>` : ""}
+            </div>
+          </div></section>` : "";
+
+      // Leaders and history (hidden from walkers and, for history, from leaders)
+      const adminKeys = ["Leader", "Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by", "X", "walkID"];
+      const admin = adminKeys.filter(has).map((k) =>
+        `<div class="kv"><dt>${escapeHtml(labelOf(k))}</dt><dd>${k === "Last_offered_or_led_by" ? "" : escapeHtml(value(k))}</dd></div>`).join("");
+      const adminBlock = admin ? `<section class="dsec dsec-admin"><h4>Leaders and history</h4><dl class="kv-list">${admin}</dl></section>` : "";
+
+      return `<div class="detail-grid walk-detail">
+        ${stats ? `<div class="stat-strip">${stats}</div>` : ""}
+        <div class="detail-columns">
+          ${overview ? `<section class="dsec"><h4>Overview</h4><dl class="kv-list">${overview}</dl></section>` : ""}
+          ${mapBlock}
+        </div>
+        ${notesBlock}
+        ${fileBlock}
+        ${adminBlock}
+      </div>`;
     }
 
     // The walks that match the search and grade filters. Used by both the list and the map.
@@ -682,6 +1004,36 @@
       const validNames = new Set(leaders.map(fullName));
       const unassigned = !current || !validNames.has(current); // no valid leader yet
       return unassigned || current === myName; // walks they own, or walks with no valid leader
+    }
+
+    // A walk with no valid leader can be taken on: it moves to the logged-in leader
+    // Leader View: walks the logged-in leader owns (listed as leader on the walk)
+    function isOwnedWalk(w) {
+      if (!isLeader) return false;
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      const myName = me ? fullName(me) : "";
+      return !!myName && str(w.Leader) === myName;
+    }
+    function isUnassignedWalk(w) {
+      const current = str(w.Leader);
+      const validNames = new Set(leaders.map(fullName));
+      return !current || !validNames.has(current);
+    }
+    function canTakeOwnership(w) {
+      if (!isLeader || !isUnassignedWalk(w)) return false;
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      return !!(me && fullName(me));
+    }
+    async function takeOwnership(w) {
+      const me = leaders.find((l) => l.leader_id === myLeaderId);
+      const myName = me ? fullName(me) : "";
+      if (!myName) return;
+      if (!confirm(`Take ownership of walk ${w.id} (${w.Route_Name || "no name"})? It will be listed with ${myName} as leader.`)) return;
+      try {
+        await update(ref(walksDb, "walks/" + w.id), { Leader: myName });
+      } catch (err) {
+        alert("This walk could not be taken on. Please try again, or ask an admin.");
+      }
     }
 
     // Walk photos: the uploaded photo (walk_photos/{walk id}) first, else the walk's Image URL, else a mountain placeholder
@@ -731,6 +1083,7 @@
       if (key === "id") return str(w.id);
       if (key === "route") return str(w.Route_Name).toLowerCase();
       if (key === "pueblo") return str(w.Pueblo).toLowerCase();
+      if (key === "owner") return str(w.Leader).toLowerCase();
       if (key === "grade") return GRADE_RANK[str(w.Grade).toUpperCase()] ?? 99;
       if (key === "distance" || key === "ascent") { const n = parseFloat(str(w[key === "distance" ? "Distance" : "Ascent"]).replace(",", ".")); return Number.isFinite(n) ? n : null; }
       if (key === "time") { const m = str(w.Total_Time).match(/(\d+)\s*h\s*(\d+)?/i); return m ? Number(m[1]) * 60 + Number(m[2] || 0) : null; }
@@ -784,29 +1137,32 @@
         if (isAdmin) {
           actions.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
           actions.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+        } else if (canTakeOwnership(w)) {
+          actions.push(`<button type="button" class="btn btn-small" data-action="take" data-id="${escapeHtml(w.id)}">Take ownership</button>`);
         } else if (isLeader && canRequestChange(w)) {
           actions.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
         }
 
-        html.push(`<tr class="walk-row ${open ? "is-open" : ""}" data-id="${escapeHtml(w.id)}">
+        html.push(`<tr class="walk-row ${open ? "is-open" : ""} ${isOwnedWalk(w) ? "is-owned" : ""}" data-id="${escapeHtml(w.id)}">
           <td class="chev-cell">
             <button type="button" class="chev" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} details for walk ${escapeHtml(w.id)}" data-action="toggle" data-id="${escapeHtml(w.id)}">
               <svg class="chev-down" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
               <svg class="chev-up" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>
             </button>
           </td>
-          <td class="walk-id">${escapeHtml(w.id)}</td>
-          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}</td>
-          <td>${escapeHtml(w.Pueblo) || "–"}</td>
+          <td class="walk-id col-id">${escapeHtml(w.id)}</td>
+          <td>${escapeHtml(w.Route_Name) || "–"}${fileBadges(w)}${waiting ? ` <span class="pill pill-pending">Change pending</span>` : ""}${String(w.Route_Description || "").trim() ? `<div class="route-desc">${escapeHtml(w.Route_Description)}</div>` : ""}</td>
+          <td class="col-pueblo">${escapeHtml(w.Pueblo) || "–"}</td>
           <td><span class="grade">${escapeHtml(w.Grade) || "–"}</span></td>
           <td>${escapeHtml(w.Distance) || "–"}</td>
           <td>${escapeHtml(w.Ascent) || "–"}</td>
           <td>${escapeHtml(w.Total_Time) || "–"}</td>
+          <td class="col-owner">${escapeHtml(w.Leader) || "–"}</td>
           <td class="photo-cell">${walkThumbHtml(w)}</td>
           ${VIEW === "walker" ? "" : `<td class="actions-cell">${actions.join(" ")}</td>`}
         </tr>`);
         if (open) {
-          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 9 : 10}">${detailGridHtml(w)}</td></tr>`);
+          html.push(`<tr class="details-row"><td colspan="${VIEW === "walker" ? 7 : 10}">${detailGridHtml(w)}</td></tr>`);
         }
       }
       document.getElementById("walks-body").innerHTML = html.join("");
@@ -851,9 +1207,19 @@
           <div class="meta">Requested by leader ${requester} · ${escapeHtml(formatDate(r.requested_at))}</div>
           ${changeListHtml(r)}
           <div class="request-actions">
-            <button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>
+            ${r.request_type === "new"
+              ? `<button type="button" class="btn btn-small btn-primary" data-action="approve" data-request="${escapeHtml(r.request_id)}">Approve</button>`
+              : `<button type="button" class="btn btn-small btn-primary" data-action="review" data-request="${escapeHtml(r.request_id)}">Review</button>`}
             <button type="button" class="btn btn-small btn-danger" data-action="reject" data-request="${escapeHtml(r.request_id)}">Reject</button>
           </div>
+          ${rejectingRequestId === r.request_id ? `<div class="reject-box">
+            <label class="meta" for="reject-reason-${escapeHtml(r.request_id)}">Reason for rejecting (optional)</label>
+            <input type="text" id="reject-reason-${escapeHtml(r.request_id)}" class="reject-reason" data-request="${escapeHtml(r.request_id)}" value="${escapeHtml(rejectReasonDraft)}" />
+            <div class="request-actions">
+              <button type="button" class="btn btn-small btn-danger" data-action="reject-confirm" data-request="${escapeHtml(r.request_id)}">Confirm reject</button>
+              <button type="button" class="btn btn-small" data-action="reject-cancel" data-request="${escapeHtml(r.request_id)}">Cancel</button>
+            </div>
+          </div>` : ""}
         </div>`;
       }).join("") : `<p class="empty" style="padding:8px 0">No change requests waiting.</p>`;
     }
@@ -905,6 +1271,21 @@
     let walksMap = null;
     let walksMapLayer = null;
 
+    // Popup content for a map pin: the walk's main details, in every view.
+    // Each view hides the same fields the list hides from it (walker view hides leader details).
+    const POPUP_FIELDS = [
+      "Grade", "Pueblo", "Leader", "Permitted_Leaders", "Start_Time", "Distance", "Ascent", "Total_Time",
+      "Terrain", "Dogs", "Scr", "Restrictions", "Route_Description", "Directions", "Lunch_or_Break_Notes", "Reservation_Notes",
+    ];
+    function walkPopupHtml(w) {
+      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
+      const rows = POPUP_FIELDS
+        .filter((k) => !hidden.includes(k) && str(w[k]) !== "")
+        .map((k) => `<div class="walk-pin-row"><span class="walk-pin-label">${escapeHtml(LABELS[k] || k)}</span> ${escapeHtml(str(w[k]))}</div>`)
+        .join("");
+      return `<div class="walk-pin"><strong>${escapeHtml(w.id)}</strong> ${escapeHtml(str(w.Route_Name))}${rows ? `<div class="walk-pin-rows">${rows}</div>` : ""}</div>`;
+    }
+
     // Pins for the filtered walks that have coordinates. Each pin shows the walk's details in a popup.
     function renderMap() {
       if (walksView !== "map") return;
@@ -928,9 +1309,7 @@
         const lat = Number(str(w.Latitude));
         const lon = Number(str(w.Longitude));
         if (!str(w.Latitude) || !str(w.Longitude) || !Number.isFinite(lat) || !Number.isFinite(lon)) { missing += 1; continue; }
-        const details = [w.Grade, w.Distance, w.Ascent].map(str).filter(Boolean).map(escapeHtml).join(" · ");
-        const popup = `<strong>${escapeHtml(w.id)}</strong><br>${escapeHtml(str(w.Route_Name))}${details ? `<br>${details}` : ""}${str(w.Pueblo) ? `<br>${escapeHtml(w.Pueblo)}` : ""}`;
-        L.marker([lat, lon]).bindPopup(popup).addTo(walksMapLayer);
+        L.marker([lat, lon]).bindPopup(walkPopupHtml(w), { maxWidth: 320, maxHeight: 360 }).addTo(walksMapLayer);
         points.push([lat, lon]);
       }
       // Measure and centre once visible, and again shortly after
@@ -958,6 +1337,7 @@
     const form = document.getElementById("walk-form");
     let dialogMode = null;   // "create" | "edit" | "request"
     let dialogWalk = null;
+    let dialogRequest = null; // change request being reviewed through the admin edit form
 
     // Dropdown options: fixed list for Grade; Leader from the leaders database (scheduler app);
     // SCR from the values already used in the walks data. The current value is always included.
@@ -1007,16 +1387,17 @@
         const type = "text";
         control = `<input id="${id}" name="${field.key}" type="${type}" value="${val}" ${disabled ? "disabled" : ""} autocomplete="off" />`;
       }
-      return `<div class="form-field ${field.full ? "full" : ""}">
+      return `<div class="form-field ${field.full ? "full" : ""} ${field.changed ? "requested-change" : ""}">
         <label for="${id}">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>
         ${control}
         ${field.hint ? `<div class="hint">${escapeHtml(field.hint)}</div>` : ""}
       </div>`;
     }
 
-    function openDialog(mode, walk = null) {
+    function openDialog(mode, walk = null, request = null) {
       dialogMode = mode;
       dialogWalk = walk;
+      dialogRequest = request;
       const title = document.getElementById("modal-title");
       const lede = document.getElementById("modal-lede");
       const submit = document.getElementById("modal-submit");
@@ -1027,6 +1408,11 @@
         title.textContent = "Add walk";
         lede.textContent = "Creates a new walk in the walks database.";
         submit.textContent = "Add walk";
+        fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
+      } else if (mode === "edit" && request) {
+        title.textContent = `Review change request: walk ${walk.id}`;
+        lede.textContent = "The leader's requested changes are filled in below, with what they were. Change any value to override it, then approve. Nothing changes until you approve.";
+        submit.textContent = "Approve and save";
         fields = [ID_FIELD, ...EDITABLE_FIELDS, ...FILE_FIELDS];
       } else if (mode === "edit") {
         title.textContent = `Edit walk ${walk.id}`;
@@ -1049,16 +1435,25 @@
 
       const gridFields = fields.filter((f) => f.type !== "file");
       const fileFields = fields.filter((f) => f.type === "file");
+      const asked = request?.changes || {};
+      const wasOf = (key) => str(request?.before?.[key] ?? walk?.[key]);
       document.getElementById("form-fields").innerHTML = gridFields.map((f) => {
         const value = mode === "create"
           ? (f.key === "walk_key" ? nextWalkId() : "")
           : mode === "new" ? ""
+          : (request && f.key in asked) ? str(asked[f.key])
           : (f.key === "walk_key" ? walk.id : str(walk?.[f.nameKey || f.key]));
-        return fieldHtml(f, value, f.key === "walk_key" && mode === "edit");
+        const field = request && f.key in asked
+          ? { ...f, changed: true, hint: `Leader asked for this. Was: ${wasOf(f.key) || "(blank)"}` }
+          : f;
+        return fieldHtml(field, value, f.key === "walk_key" && mode === "edit");
       }).join("") + fileFilesPanelHtml(mode, fileFields, walk);
       wireFileInputs();
       modal.hidden = false;
-      document.getElementById(mode === "create" ? "f-walk_key" : "f-Route_Name")?.focus();
+      // Only focus a field when the user is about to type a new walk. Reviewing or editing an existing walk
+      // opens with nothing focused, so typing or Enter cannot change the walk by accident.
+      if (mode === "create") document.getElementById("f-walk_key")?.focus();
+      else if (mode === "new") document.getElementById("f-Route_Name")?.focus();
     }
 
     // Files panel in the edit and request dialogs: one card each for the GPX route and the photo
@@ -1108,6 +1503,7 @@
     }
 
     function closeDialog() {
+      dialogRequest = null;
       modal.hidden = true;
       dialogMode = null;
       dialogWalk = null;
@@ -1176,8 +1572,28 @@
           const data = {};
           for (const f of EDITABLE_FIELDS) data[f.key] = toStored(record[f.key]);
           Object.assign(data, fileNameFields(files));
+          const req = dialogRequest;
+          if (req) {
+            // Files the leader sent travel with the request unless the admin uploads a replacement here
+            if (!files.gpx && "GPX_Text" in (req.changes || {})) files.gpx = req.changes.GPX_Text ? { name: req.changes.GPX_Name || "", text: req.changes.GPX_Text } : { remove: true };
+            if (!files.photo && "Photo_Data" in (req.changes || {})) files.photo = req.changes.Photo_Data ? { name: req.changes.Photo_Name || "", data: req.changes.Photo_Data } : { remove: true };
+            Object.assign(data, fileNameFields(files));
+          }
           await update(ref(walksDb, "walks/" + dialogWalk.id), data);
           await saveFileChanges(dialogWalk.id, files);
+          if (req) {
+            const overrides = Object.keys(req.changes || {})
+              .filter((k) => !["GPX_Text", "GPX_Name", "Photo_Data", "Photo_Name"].includes(k))
+              .filter((k) => record[k] !== str(req.changes[k]));
+            const applied = {};
+            for (const f of EDITABLE_FIELDS) if (f.key in (req.changes || {})) applied[f.key] = record[f.key];
+            await update(ref(walksDb, "walk_requests/" + req.request_id), {
+              status: "approved",
+              reviewed_changes: applied,
+              admin_overrides: overrides,
+              reviewed_at: new Date().toISOString(),
+            });
+          }
         } else if (mode === "new") {
           if (!myLeaderId) return showError("Enter your email address first, so we know which leader is requesting.");
           const changes = {};
@@ -1256,23 +1672,53 @@
       if (e.key === "Enter") { e.preventDefault(); identifyByEmail(); }
     });
 
-    // Table: expand a row (chevron or anywhere on the row), edit, delete, request change
-    document.getElementById("walks-body").addEventListener("click", async (e) => {
+    // Leader email: passed from the Leaders Hub (?email=), or remembered on this device.
+    // Used to identify the leader once the leader list has loaded.
+    const LEADER_EMAIL_KEY = "cbmw-leader-email";
+    let hubEmail = "";
+    try {
+      const hubUrl = new URL(window.location.href);
+      hubEmail = hubUrl.searchParams.get("email") || "";
+      if (hubEmail) {
+        hubUrl.searchParams.delete("email");
+        history.replaceState(null, "", hubUrl.pathname + hubUrl.search + hubUrl.hash);
+      }
+    } catch (e) {}
+    function rememberLeaderEmail(email) {
+      try { localStorage.setItem(LEADER_EMAIL_KEY, email); } catch (e) {}
+    }
+    let leaderEmailApplied = false;
+    function applySavedLeaderEmail() {
+      if (leaderEmailApplied) return;
+      leaderEmailApplied = true;
+      let email = hubEmail;
+      if (!email) { try { email = localStorage.getItem(LEADER_EMAIL_KEY) || ""; } catch (e) {} }
+      const input = document.getElementById("leader-email");
+      if (!input || !email) return;
+      input.value = email;
+      identifyByEmail();
+    }
+
+
+    // Table: a click on a row opens the walk card; the chevron expands the row. Card and table share these actions.
+    async function handleWalkClick(e) {
       const btn = e.target.closest("[data-action]");
       const clickedRow = e.target.closest("tr.walk-row");
 
       if (!btn) {
-        // Whole row toggles, except when a control is clicked
-        if (clickedRow && !e.target.closest("button, a")) toggleWalk(clickedRow.dataset.id);
+        // Whole row opens the walk card, except when a control is clicked
+        if (clickedRow && !e.target.closest("button, a")) openWalkCard(clickedRow.dataset.id);
         return;
       }
+      if (btn.dataset.action === "close-card") return closeWalkCard();
+      if (btn.dataset.action === "toggle") return toggleWalk(btn.dataset.id);
       const walk = walkById(btn.dataset.id);
       if (!walk) return;
 
       if (btn.dataset.action === "download-gpx" || btn.dataset.action === "view-photo") return openWalkFile(walk.id, btn.dataset.action);
-      if (btn.dataset.action === "toggle") return toggleWalk(walk.id);
-      if (btn.dataset.action === "edit" && isAdmin) return openDialog("edit", walk);
-      if (btn.dataset.action === "request" && isLeader) return openDialog("request", walk);
+      if (btn.dataset.action === "edit" && isAdmin) { closeWalkCard(); return openDialog("edit", walk); }
+      if (btn.dataset.action === "request" && isLeader) { closeWalkCard(); return openDialog("request", walk); }
+      if (btn.dataset.action === "take" && isLeader) { closeWalkCard(); return takeOwnership(walk); }
       if (btn.dataset.action === "delete" && isAdmin) {
         const used = bookingCountFor(walk.id);
         const pending = pendingFor(walk.id).length;
@@ -1286,11 +1732,129 @@
           await Promise.all([remove(ref(walksDb, "walk_gpx/" + walk.id)), remove(ref(walksDb, "walk_photos/" + walk.id))]).catch(() => {});
           await Promise.all(pendingFor(walk.id).map((r) => remove(ref(walksDb, "walk_requests/" + r.request_id)))).catch(() => {});
           expandedWalks.delete(walk.id);
+          closeWalkCard();
         } catch (err) {
           console.error("Delete failed:", err);
           alert("Could not delete. Check the database permissions.");
         }
       }
+    }
+    document.getElementById("walks-body").addEventListener("click", handleWalkClick);
+
+    // Walk card popup: same look as the scheduler's walk card. Opened by a row click, shows the full details and actions.
+    function walkCardActionsHtml(w) {
+      const buttons = [];
+      if (isAdmin) {
+        buttons.push(`<button type="button" class="btn btn-small" data-action="edit" data-id="${escapeHtml(w.id)}">Edit</button>`);
+        buttons.push(`<button type="button" class="btn btn-small btn-danger" data-action="delete" data-id="${escapeHtml(w.id)}">Delete</button>`);
+      } else if (canTakeOwnership(w)) {
+        buttons.push(`<button type="button" class="btn btn-small" data-action="take" data-id="${escapeHtml(w.id)}">Take ownership</button>`);
+      } else if (isLeader && canRequestChange(w)) {
+        const waiting = pendingFor(w.id).length > 0;
+        buttons.push(`<button type="button" class="btn btn-small" data-action="request" data-id="${escapeHtml(w.id)}" ${waiting ? "disabled" : ""}>${waiting ? "Change pending" : "Request change"}</button>`);
+      }
+      return buttons.join("");
+    }
+    // Walk card: same header, stat tiles, field groups, map and links as the walk scheduler's card
+    function walkCardHtml(w) {
+      const value = (k) => str(w[k]);
+      const labelOf = (k) => (EDITABLE_FIELDS.find((f) => f.key === k) || {}).label || k;
+      const hidden = VIEW === "walker" ? WALKER_HIDDEN : VIEW === "leader" ? LEADER_HIDDEN_FIELDS : [];
+      const show = (k) => !hidden.includes(k) && value(k) !== "";
+      const grade = value("Grade");
+      const url = (v) => /^https?:\/\//.test(v);
+      const stat = (label, v) => `
+        <div class="walk-stat">
+          <div class="walk-stat-label">${escapeHtml(label)}</div>
+          <div class="walk-stat-value">${escapeHtml(v || "–")}</div>
+        </div>`;
+      const info = (label, valueHtml) => `<div class="walk-info-row"><span class="walk-info-label">${escapeHtml(label)}</span><span class="walk-info-value">${valueHtml}</span></div>`;
+      const linkTo = (v) => `<a href="${escapeHtml(v)}" target="_blank" rel="noopener noreferrer">${escapeHtml(v)}</a>`;
+
+      // Location and links
+      const hasCoords = show("Latitude") && show("Longitude");
+      const lat = Number(value("Latitude"));
+      const lon = Number(value("Longitude"));
+      const coordsOk = hasCoords && Number.isFinite(lat) && Number.isFinite(lon);
+      const mapUrl = coordsOk ? `https://www.google.com/maps?q=${encodeURIComponent(lat + "," + lon)}` : "";
+      const rows = [];
+      if (show("Leader")) rows.push(info(labelOf("Leader"), escapeHtml(value("Leader"))));
+      if (show("Pueblo")) rows.push(info(labelOf("Pueblo"), escapeHtml(value("Pueblo"))));
+      if (show("Start_Time")) rows.push(info(labelOf("Start_Time"), escapeHtml(value("Start_Time"))));
+      if (show("WiS_URL") && url(value("WiS_URL"))) rows.push(info("Walks in Spain", linkTo(value("WiS_URL"))));
+      if (show("WiS_Bitly_Link") && url(value("WiS_Bitly_Link"))) rows.push(info("Short link", linkTo(value("WiS_Bitly_Link"))));
+      if (show("KomootBitly") && url(value("KomootBitly"))) rows.push(info("Komoot", linkTo(value("KomootBitly"))));
+      if (show("Image_URL") && url(value("Image_URL"))) rows.push(info("Image", linkTo(value("Image_URL"))));
+      if (coordsOk) rows.push(info("Google Maps", `<a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mapUrl)}</a>`));
+      if (value("GPX_Name")) rows.push(info("GPX route", `<a href="#" data-action="download-gpx" data-id="${escapeHtml(w.id)}">${escapeHtml(value("GPX_Name"))} ↓</a>`));
+      const map = coordsOk
+        ? `<iframe class="walk-meeting-map" title="Meeting point map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lon)}&amp;z=14&amp;output=embed"></iframe>`
+        : "";
+
+      // Written notes and directions
+      const quote = show("Route_Description") ? `<blockquote class="walk-quote">${escapeHtml(value("Route_Description"))}</blockquote>` : "";
+      const directions = show("Directions") ? `<div class="walk-section-title">${escapeHtml(labelOf("Directions"))}</div><div class="walk-directions">${escapeHtml(value("Directions"))}</div>` : "";
+      const noteKeys = ["Restrictions", "Lunch_or_Break_Notes", "Reservation_Notes"].filter(show);
+      const notes = noteKeys.length
+        ? `<div class="walk-section-title">Notes</div><div class="walk-info">${noteKeys.map((k) => info(labelOf(k), escapeHtml(value(k)))).join("")}</div>` : "";
+      const dogs = show("Dogs") ? `<div class="walk-dogs">🐾 ${escapeHtml(value("Dogs"))}</div>` : "";
+
+      // Leaders and history: admin only
+      const adminKeys = ["Permitted_Leaders", "Season_last_walked_or_offered", "Last_offered_or_led_by"];
+      // Last offered or led by: the label stays, the value is left blank in admin view
+      const adminRows = isAdmin ? adminKeys.filter(show).map((k) => info(labelOf(k), k === "Last_offered_or_led_by" ? "" : escapeHtml(value(k)))).join("") : "";
+      const admin = adminRows ? `<div class="walk-section-title">Leaders and history</div><div class="walk-info">${adminRows}</div>` : "";
+
+      // Card actions, same rules as the table
+      const actions = walkCardActionsHtml(w);
+
+      return `
+        <div class="walk-card-header">
+          <div>
+            <h3 id="detail-title">${escapeHtml(str(w.Route_Name) || "Walk details")}</h3>
+            <div class="walk-card-date">Walk ${escapeHtml(w.id)}${grade ? ` • Grade ${escapeHtml(grade)}` : ""}</div>
+          </div>
+          <div class="walk-card-head-actions">
+            <button class="walk-card-close" type="button" data-action="close-card" aria-label="Close">×</button>
+          </div>
+        </div>
+        <div class="walk-card-body">
+          ${walkThumbHtml(w).replace('class="walk-thumb ', 'class="walk-card-photo walk-thumb ')}
+          <div class="walk-stats">
+            ${stat("Distance", value("Distance"))}
+            ${stat("Ascent", value("Ascent"))}
+            ${stat("Total time", value("Total_Time"))}
+            ${stat("Grade", [grade, value("Terrain"), value("Scr")].filter(Boolean).join(" / "))}
+          </div>
+          ${quote}
+          <div class="walk-section-title">Location and links</div>
+          <div class="walk-info">${rows.join("")}</div>
+          ${map}
+          ${directions}
+          ${notes}
+          ${dogs}
+          ${admin}
+        </div>
+        <div class="walk-card-actions">${actions}</div>`;
+    }
+    function openWalkCard(id) {
+      const w = walkById(id);
+      if (!w) return;
+      const card = document.getElementById("walk-card");
+      card.innerHTML = walkCardHtml(w);
+      hydrateWalkThumbs();
+      document.getElementById("walk-overlay").classList.add("active");
+    }
+    function closeWalkCard() {
+      document.getElementById("walk-overlay").classList.remove("active");
+    }
+    document.getElementById("walk-overlay").addEventListener("click", (e) => {
+      if (e.target.id === "walk-overlay") return closeWalkCard();
+      if (e.target.closest("a[href='#']")) e.preventDefault();
+      handleWalkClick(e);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeWalkCard();
     });
 
     // Loads a walk's GPX or photo from the database, only when asked for
@@ -1326,6 +1890,10 @@
     }
 
     // Pending request buttons (admin)
+    document.getElementById("pending-list").addEventListener("input", (e) => {
+      if (e.target.classList.contains("reject-reason")) rejectReasonDraft = e.target.value;
+    });
+
     document.getElementById("pending-list").addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn || !isAdmin) return;
@@ -1356,6 +1924,12 @@
       }
 
       try {
+        if (btn.dataset.action === "review") {
+          const walk = walkById(request.walk_id);
+          if (!walk) return alert("This walk no longer exists, so the change cannot be applied. Reject the request instead.");
+          openDialog("edit", walk, request);
+          return;
+        }
         if (btn.dataset.action === "approve" && request.request_type === "new") {
           const suggested = nextWalkId();
           const typedKey = prompt("Walk key for the new walk (e.g. walk_610):", suggested);
@@ -1408,13 +1982,29 @@
           });
         }
         if (btn.dataset.action === "reject") {
-          const reason = prompt("Reason for rejecting (optional):", "");
-          if (reason === null) return;
+          // Opens an inline reason box (no browser pop-up, which some embedded pages block)
+          rejectingRequestId = request.request_id;
+          rejectReasonDraft = "";
+          renderPending();
+          document.getElementById("reject-reason-" + request.request_id)?.focus();
+          return;
+        }
+        if (btn.dataset.action === "reject-cancel") {
+          rejectingRequestId = null;
+          rejectReasonDraft = "";
+          renderPending();
+          return;
+        }
+        if (btn.dataset.action === "reject-confirm") {
+          const reason = document.getElementById("reject-reason-" + request.request_id)?.value ?? rejectReasonDraft;
           await update(ref(walksDb, "walk_requests/" + request.request_id), {
             status: "rejected",
             reason: str(reason),
             reviewed_at: new Date().toISOString(),
           });
+          rejectingRequestId = null;
+          rejectReasonDraft = "";
+          return;
         }
       } catch (err) {
         console.error("Review failed:", err);
@@ -1449,6 +2039,7 @@
         onValue(ref(bookingsDb, "leaders"), (snapshot) => {
           leaders = Object.values(snapshot.val() || {}).filter(Boolean)
             .sort((a, b) => Number(a.leader_id) - Number(b.leader_id));
+          if (leaders.length) applySavedLeaderEmail();
           renderAll();
         }, (error) => console.error("Unable to load leaders:", error));
 
